@@ -171,6 +171,8 @@ button.chip{color:#fff;cursor:pointer;font-size:15px}
 .lucky .arm{transform-origin:79% 60%;animation:lwave .55s ease-in-out infinite alternate}
 @keyframes lwave{from{transform:rotate(-9deg)}to{transform:rotate(7deg)}}
 .catfig.peek .lucky{width:4.6vw}
+.bubble.catb{bottom:100%;left:30%;font-size:1.5vw;margin-bottom:.8vw;animation:pop .4s .6s both,shake .5s 1s 3}
+@keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-4deg)}75%{transform:rotate(4deg)}}
 .catfig.dance{left:31vw;bottom:2vh;animation:catd .45s ease-in-out infinite alternate}
 @keyframes catd{from{transform:translateY(0) rotate(-6deg)}to{transform:translateY(-1.5vw) rotate(6deg)}}
 .men-wrap{position:absolute;left:50%;bottom:.5vh;transform:translateX(-50%);z-index:2;width:15vw}
@@ -967,7 +969,7 @@ function host() {
 
   const ctrl = extra => `<div class="h-ctrl"><button class="btn sm ghost" id="mus">${musicOn ? '🔊' : '🔇'} מוזיקה</button>${(state.order || []).length && ['question', 'reveal'].includes(state.phase) ? `<span class="chip">תמונה ${state.round + 1} / ${state.order.length}</span>` : ''}${extra}</div>`;
   const hostFig = (cls, bubble = '') => `<div class="hostfig ${cls}"><div class="bubble" id="bub" ${bubble ? '' : 'hidden'}>${esc(bubble)}</div><img src="assets/host.webp" alt=""></div>`;
-  const catFig = cls => `<div class="catfig ${cls}"><div class="lucky"><img src="assets/luckycat-body.webp" alt=""><img class="arm" src="assets/luckycat-arm.webp" alt=""></div></div>`;
+  const catFig = (cls, say = '') => `<div class="catfig ${cls}">${say ? `<div class="bubble catb">${esc(say)}</div>` : ''}<div class="lucky"><img src="assets/luckycat-body.webp" alt=""><img class="arm" src="assets/luckycat-arm.webp" alt=""></div></div>`;
   const progress = () => { const t = (state.order || []).length; return t ? Math.min(8, Math.ceil(8 * (state.round + 1) / t)) : 0; };
   const setBubble = txt => { const b = $('#bub'); if (!b) return; if (!txt) { b.hidden = true; return; } if (b.textContent !== txt || b.hidden) { b.textContent = txt; b.hidden = false; } };
 
@@ -1001,7 +1003,7 @@ function host() {
         <div class="h-head">${marquee('mini')}${isRev ? '' : `<div class="vote-ban">אין הצבעות בגרעין<small>*חוץ מעכשיו</small></div>`}</div>
         <div class="hq-grid">
           <div></div>
-          <div class="frame"><div class="inner"><img id="pimg" alt=""></div>${isRev && photo.caption ? `<div class="h-cap">💬 ${esc(photo.caption)}</div>` : ''}${catFig('peek', false)}</div>
+          <div class="frame"><div class="inner"><img id="pimg" alt=""></div>${isRev && photo.caption ? `<div class="h-cap">💬 ${esc(photo.caption)}</div>` : ''}${catFig('peek', state.round % 7 === 6 ? 'זה ונדליזם!!!' : '')}</div>
           <div class="panel">
             ${isRev ? `<div class="h-owner">${av(state.ownerId, 'av-own')}<div><small>התמונה של</small><div class="gold-text">${esc(nameOf(state.ownerId))}!</div></div></div>`
               : `<div class="qhead"><div class="ctimer"><div class="wax" id="wax" style="--f:1"></div></div><div><div class="gold-text qt">של מי התמונה?</div><div class="secs" id="tleft"></div></div></div>`}
