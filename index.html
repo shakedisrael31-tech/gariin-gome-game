@@ -876,8 +876,8 @@ function host() {
 
   function render(force) {
     if (!state) { app.innerHTML = '<div class="screen center"><p class="waiting">טוען…</p></div>'; return; }
-    const key = `${state.phase}|${state.round}`;
-    if (force || key !== lastKey || !$('#hroot')) { lastKey = key; full(); syncMusic(state.phase); }
+    const key = `${state.phase}|${state.round}` + (state.phase === 'podium' ? '|' + players.map(p => p.id + ':' + (p.score || 0)).join(',') : '');
+    if (force || key !== lastKey || !$('#hroot')) { const phaseChanged = !lastKey.startsWith(state.phase + '|'); lastKey = key; $('.confetti')?.remove(); full(); if (phaseChanged || force) syncMusic(state.phase); }
     dynamic();
   }
   app.onclick = e => {
