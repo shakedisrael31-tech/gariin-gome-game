@@ -49,7 +49,24 @@ select option{color:#000}
 .prev{width:100%;max-height:320px;object-fit:contain;border-radius:12px;background:#0004}
 .done{text-align:center;font-size:20px;font-weight:700;padding:20px}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:var(--card);border:1px solid var(--line);margin:3px;font-weight:500}
-.dot{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#1a1033}
+.dot{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#1a1033;flex:none}
+img.avimg{object-fit:cover;display:inline-block;background:#0003}
+.av-md{width:44px;height:44px;font-size:20px;border:3px solid #fff8}
+.av-lg{width:64px;height:64px;font-size:28px}
+.av-xl{width:120px;height:120px;font-size:52px;border:4px solid #fff;box-shadow:0 8px 30px #0006}
+.av-h{width:3.4vw;height:3.4vw;font-size:1.6vw;border:.25vw solid #fff8}
+.av-own{width:6vw;height:6vw;font-size:2.6vw;border:.35vw solid #fff;vertical-align:middle}
+.chip .dot{width:1.6em;height:1.6em}
+.regrow{display:flex;gap:12px;align-items:center}
+.regrow input{flex:1}
+.avpick{width:84px;height:84px;border-radius:50%;border:2px dashed #fff8;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex:none;background:#0003}
+.avprev{display:flex;flex-direction:column;align-items:center;font-size:26px;text-align:center;line-height:1.1}
+.avprev small{font-size:11px;font-weight:500}
+.avprev img{width:84px;height:84px;object-fit:cover}
+details summary{cursor:pointer;color:var(--mut);margin-top:4px}
+.plist{display:flex;flex-wrap:wrap;margin-top:8px}
+button.chip{color:#fff;cursor:pointer;font-size:15px}
+.lnk{font-weight:500;color:var(--mut);font-size:14px;cursor:pointer;text-decoration:underline}
 @keyframes bob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-10px) rotate(4deg)}}
 @keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
 @keyframes fadeUp{from{transform:translateY(20px);opacity:0}to{transform:none;opacity:1}}
@@ -185,7 +202,12 @@ const OPT_COLORS = ['var(--o0)', 'var(--o1)', 'var(--o2)', 'var(--o3)', 'var(--o
 const OPT_SHAPES = ['▲', '◆', '●', '■', '★'];
 const hue = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
 const pcolor = s => `hsl(${hue(s)} 85% 68%)`;
-const dot = name => `<span class="dot" style="background:${pcolor(name)}">${esc((name || '?').trim()[0] || '?')}</span>`;
+const PEOPLE = new Map();
+// avatar for a person (object or id): their profile photo, or a colored initial
+const av = (pp, cls = '') => {
+  const p = typeof pp === 'string' ? PEOPLE.get(pp) : pp; const name = p?.name || '?';
+  return p?.avatar ? `<img class="dot avimg ${cls}" src="${p.avatar}" alt="">` : `<span class="dot ${cls}" style="background:${pcolor(name)}">${esc(name.trim()[0] || '?')}</span>`;
+};
 const GAME_URL = location.origin + location.pathname;
 
 let unsubs = [], timers = [];
@@ -193,7 +215,10 @@ function cleanup() { unsubs.forEach(u => { try { u(); } catch (e) {} }); unsubs 
 const listen = (ref, cb) => unsubs.push(onSnapshot(ref, cb, err => console.error(err)));
 
 function watchPeople(cb) {
-  listen(col('people'), s => cb(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.name.localeCompare(b.name, 'he'))));
+  listen(col('people'), s => {
+    const arr = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.name.localeCompare(b.name, 'he'));
+    PEOPLE.clear(); arr.forEach(p => PEOPLE.set(p.id, p)); cb(arr);
+  });
 }
 
 const imgCache = new Map();
@@ -238,6 +263,46 @@ async function fileToJpeg(file, max = 1280) {
   } finally { URL.revokeObjectURL(url); }
 }
 
+async function fileToAvatar(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await loadImg(url); const s = Math.min(img.naturalWidth, img.naturalHeight);
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    c.getContext('2d').drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, 256, 256);
+    return c.toDataURL('image/jpeg', 0.8);
+  } finally { URL.revokeObjectURL(url); }
+}
+
+// self sign-up: name + profile photo (or pick yourself if already registered)
+function registerUI(el, people, onDone) {
+  let avatar = null;
+  el.innerHTML = `<div class="card">
+    <label>מי את/ה? 👋</label>
+    <div class="regrow"><label class="avpick"><input type="file" accept="image/*" hidden><span class="avprev">📷<small>תמונת<br>פרופיל</small></span></label>
+      <input class="rname" maxlength="24" placeholder="השם שלך"></div>
+    <button class="btn big rgo">זה אני ✓</button><div class="msg rmsg"></div>
+    ${people.length ? `<details><summary>כבר נרשמת? לחצו כאן ובחרו את עצמכם</summary><div class="plist">${people.map(p => `<button class="chip pick" data-id="${p.id}">${av(p)}${esc(p.name)}</button>`).join('')}</div></details>` : ''}
+  </div>`;
+  const inp = $('input[type=file]', el), prev = $('.avprev', el), msg = $('.rmsg', el);
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    try { avatar = await fileToAvatar(f); prev.innerHTML = `<img src="${avatar}" alt="">`; msg.textContent = ''; }
+    catch (e) { msg.textContent = 'לא הצלחתי לקרוא את התמונה, נסו אחרת'; }
+  };
+  $('.rgo', el).onclick = async () => {
+    const name = $('.rname', el).value.trim();
+    if (!name) { msg.textContent = 'צריך לכתוב שם 🙂'; return; }
+    if (!avatar) { msg.textContent = 'צריך להוסיף תמונת פרופיל 📷'; return; }
+    if (people.some(p => p.name.trim() === name)) { msg.textContent = `כבר יש "${name}". אם זה את/ה, בחרו מ"כבר נרשמת". אחרת הוסיפו אות משפחה`; return; }
+    $('.rgo', el).disabled = true;
+    const id = uid();
+    try { await setDoc(dref('people', id), { name, avatar, createdAt: Date.now() }); }
+    catch (e) { console.error(e); msg.textContent = 'משהו השתבש, נסו שוב'; $('.rgo', el).disabled = false; return; }
+    localStorage.setItem('pg_person', id); onDone(id, name);
+  };
+  $$('.pick', el).forEach(b => b.onclick = () => { const p = people.find(x => x.id === b.dataset.id); localStorage.setItem('pg_person', p.id); onDone(p.id, p.name); });
+}
+
 /* ================= router ================= */
 function route() {
   cleanup();
@@ -260,30 +325,28 @@ function home() {
 
 /* ================= upload ================= */
 function upload() {
-  let me = localStorage.getItem('pg_person') || '', myPhotos = [], unsubMine = null, processed = null;
+  let me = localStorage.getItem('pg_person') || '', people = [], myPhotos = [], unsubMine = null, processed = null, whoKey = '';
   app.innerHTML = `<div class="screen"><a class="back" href="#">←</a>
     <h1>📤 העלאת תמונות</h1>
     <p class="sub">4 תמונות של דברים שקורים לך בחיים עכשיו: משמעותיות, מרגשות, מצחיקות.<br>אל תספרו לאף אחד מה שלחתם 🤫</p>
-    <div class="card">
-      <label>מי את/ה?</label>
-      <select id="who"><option value="">בחרו שם…</option></select>
-      <div class="row"><input id="newName" placeholder="לא ברשימה? כתבו את השם"><button class="btn sm" id="addName">הוספה</button></div>
-    </div>
+    <div id="who"></div>
     <div id="slots"></div></div>`;
-  const sel = $('#who');
   watchPeople(p => {
-    sel.innerHTML = '<option value="">בחרו שם…</option>' + p.map(x => `<option value="${x.id}" ${x.id === me ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
+    people = p;
+    if (me && !p.find(x => x.id === me)) { me = ''; watchMine(); }
+    renderWho();
   });
-  function setMe(id) { me = id; localStorage.setItem('pg_person', id); watchMine(); }
-  sel.onchange = () => setMe(sel.value);
-  $('#addName').onclick = async () => {
-    const name = $('#newName').value.trim(); if (!name) return;
-    const s = await getDocs(col('people'));
-    const ex = s.docs.find(d => d.data().name.trim() === name);
-    const id = ex ? ex.id : uid();
-    if (!ex) await setDoc(dref('people', id), { name, createdAt: Date.now() });
-    $('#newName').value = ''; setMe(id); setTimeout(() => { sel.value = id; }, 300);
-  };
+  function renderWho() {
+    const el = $('#who'), p = people.find(x => x.id === me);
+    const key = p ? `${me}|${(p.avatar || '').length}|${p.name}` : 'reg';
+    if (key === whoKey) return; whoKey = key;
+    if (!p) { registerUI(el, people, id => { me = id; whoKey = ''; renderWho(); watchMine(); }); return; }
+    el.innerHTML = `<div class="card"><div class="row">${av(p, 'av-lg')}<div style="flex:1"><b style="font-size:20px">${esc(p.name)}</b><br>
+      <label class="lnk">החלפת תמונת פרופיל<input type="file" accept="image/*" hidden id="chAv"></label></div>
+      <button class="btn sm ghost" id="notMe">זה לא אני</button></div></div>`;
+    $('#notMe').onclick = () => { me = ''; localStorage.removeItem('pg_person'); whoKey = ''; renderWho(); watchMine(); };
+    $('#chAv').onchange = async e => { const f = e.target.files[0]; if (!f) return; await updateDoc(dref('people', me), { avatar: await fileToAvatar(f) }); };
+  }
   function watchMine() {
     if (unsubMine) unsubMine();
     unsubMine = null;
@@ -335,10 +398,10 @@ function play() {
   let deviceId = localStorage.getItem('pg_device');
   if (!deviceId) { deviceId = uid(); localStorage.setItem('pg_device', deviceId); }
   let me = localStorage.getItem('pg_person') || '', people = [], state = null, player = undefined;
-  let seenRound = -1, seenAt = 0, myAns = null, ansRound = -1, unsubAns = null, players = [];
+  let seenRound = -1, seenAt = 0, myAns = null, ansRound = -1, unsubAns = null, players = [], joinShown = false;
   const nameOf = id => people.find(p => p.id === id)?.name || '?';
 
-  watchPeople(p => { people = p; render(); });
+  watchPeople(p => { const had = people.length; people = p; if (!had && p.length && player === null) { joinShown = false; } render(); });
   listen(gref, s => { state = s.data() || { phase: 'lobby' }; render(); });
   listen(dref('players', deviceId), s => { player = s.exists() ? s.data() : null; render(); });
   listen(col('players'), s => { players = s.docs.map(d => d.data()); if (state && ['titles', 'podium'].includes(state.phase)) render(); });
@@ -353,8 +416,9 @@ function play() {
 
   function render() {
     if (player === undefined || !state) { app.innerHTML = `<div class="screen center"><div class="logo">📸</div><p class="waiting">מתחבר…</p></div>`; return; }
-    if (!player) return renderJoin();
-    const top = `<div class="pbar"><span>${dot(player.name)} <b>${esc(player.name)}</b></span><span>⭐ <b>${player.score || 0}</b></span></div>`;
+    if (!player) { if (!joinShown) { joinShown = true; renderJoin(); } return; }
+    joinShown = false;
+    const top = `<div class="pbar"><span>${av(player.personId)} <b>${esc(player.name)}</b></span><span>⭐ <b>${player.score || 0}</b></span></div>`;
     const ph = state.phase;
     if (ph === 'question' || ph === 'reveal') watchAnswer(state.round);
     if (ph === 'question') {
@@ -363,7 +427,7 @@ function play() {
       if (myAns) { app.innerHTML = `<div class="screen">${top}<div class="center" style="padding-top:8vh"><div class="big-emoji">⏳</div><p class="waiting">ענית: <b>${esc(nameOf(myAns.choice))}</b><br>מחכים לכולם…</p></div></div>`; return; }
       app.innerHTML = `<div class="screen">${top}
         ${isOwner ? `<div class="note">🤫 <b>זו התמונה שלך!</b><br>תבחר/י מישהו אחר כדי להטעות (על התמונה שלך אין נקודות)</div>` : `<p class="sub" style="text-align:center;font-size:18px">של מי התמונה? 👀</p>`}
-        <div class="opts">${(state.options || []).map((id, i) => `<button class="opt" data-id="${id}" style="background:${OPT_COLORS[i]};animation-delay:${i * 60}ms"><span class="sh">${OPT_SHAPES[i]}</span>${esc(nameOf(id))}</button>`).join('')}</div></div>`;
+        <div class="opts">${(state.options || []).map((id, i) => `<button class="opt" data-id="${id}" style="background:${OPT_COLORS[i]};animation-delay:${i * 60}ms"><span class="sh">${OPT_SHAPES[i]}</span>${av(id, 'av-md')}${esc(nameOf(id))}</button>`).join('')}</div></div>`;
       $$('.opt').forEach(b => b.onclick = async () => {
         $$('.opt').forEach(x => { x.disabled = true; if (x !== b) x.classList.add('dim'); });
         const r = state.round;
@@ -404,26 +468,17 @@ function play() {
   }
 
   function renderJoin() {
-    app.innerHTML = `<div class="screen"><a class="back" href="#">←</a><div class="center" style="padding-top:4vh">
-      <div class="logo">🎮</div><h1>הצטרפות למשחק</h1>
-      <div class="card" style="width:100%;text-align:right">
-        <label>מי את/ה?</label>
-        <select id="who"><option value="">בחרו שם…</option>${people.map(p => `<option value="${p.id}" ${p.id === me ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
-        <div class="row"><input id="newName" placeholder="לא ברשימה? כתבו שם"></div>
-        <button class="btn big" id="join">יאללה 🚀</button><div class="msg" id="msg"></div>
-      </div></div></div>`;
-    $('#join').onclick = async () => {
-      let id = $('#who').value; const nn = $('#newName').value.trim();
-      if (!id && nn) {
-        const ex = people.find(p => p.name.trim() === nn);
-        id = ex ? ex.id : uid();
-        if (!ex) await setDoc(dref('people', id), { name: nn, createdAt: Date.now() });
-      }
-      if (!id) { $('#msg').textContent = 'צריך לבחור שם 🙂'; return; }
-      me = id; localStorage.setItem('pg_person', id);
-      const name = people.find(p => p.id === id)?.name || nn;
-      await setDoc(dref('players', deviceId), { personId: id, name, joinedAt: Date.now() }, { merge: true });
-    };
+    const p = people.find(x => x.id === me);
+    app.innerHTML = `<div class="screen"><a class="back" href="#">←</a><div class="center" style="padding-top:3vh"><div class="logo">🎮</div><h1>הצטרפות למשחק</h1></div><div id="jw"></div></div>`;
+    const join = async (id, name) => { me = id; await setDoc(dref('players', deviceId), { personId: id, name, joinedAt: Date.now() }, { merge: true }); };
+    if (p) {
+      $('#jw').innerHTML = `<div class="card" style="align-items:center;text-align:center">${av(p, 'av-xl')}<b style="font-size:24px">${esc(p.name)}</b>
+        <button class="btn big" id="asMe">להצטרף 🚀</button><button class="btn sm ghost" id="other">זה לא אני</button></div>`;
+      $('#asMe').onclick = () => join(p.id, p.name);
+      $('#other').onclick = () => { me = ''; localStorage.removeItem('pg_person'); renderJoin(); };
+      return;
+    }
+    registerUI($('#jw'), people, join);
   }
   render();
 }
@@ -569,7 +624,7 @@ function host() {
         <div class="lobby">
           <div><img src="https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=10&data=${encodeURIComponent(joinUrl)}" alt="QR"><div class="url">${esc(joinUrl)}</div></div>
           <div><h1>סרקו כדי להצטרף 📱</h1>
-            <div class="stat">${photos.length} תמונות · ${owners.size} שלחו · ${people.length} משתתפים</div>
+            <div class="stat">${people.length} נרשמו · ${owners.size} שלחו תמונות · ${photos.length} תמונות</div>
             <div class="chips" id="joined"></div>
             <button class="btn big" id="start" style="width:auto;font-size:2vw;padding:1.2vw 3vw" ${photos.length && people.length >= 2 ? '' : 'disabled'}>🚀 מתחילים!</button>
           </div></div></div>`;
@@ -583,8 +638,8 @@ function host() {
         <div class="h-grid">
           <div class="h-photo"><img id="pimg" alt="">${isRev && photo.caption ? `<div class="h-cap">💬 ${esc(photo.caption)}</div>` : ''}</div>
           <div>
-            ${isRev ? `<div class="h-owner">📸 של ${esc(nameOf(state.ownerId))}!</div>` : `<div style="font-size:2.6vw;font-weight:900">של מי התמונה? <span id="tleft" style="color:#ffd60a"></span></div><div class="tbar"><i id="tbar" style="width:100%"></i></div>`}
-            <div class="h-opts">${(state.options || []).map((id, i) => `<div class="h-opt ${isRev ? (id === state.ownerId ? 'right' : 'wrong') : ''}" data-id="${id}" style="background:${OPT_COLORS[i]};animation-delay:${i * 80}ms"><i class="vb" style="width:0"></i><span class="sh">${OPT_SHAPES[i]}</span><span>${esc(nameOf(id))}</span><b class="vc"></b></div>`).join('')}</div>
+            ${isRev ? `<div class="h-owner">${av(state.ownerId, 'av-own')} של ${esc(nameOf(state.ownerId))}!</div>` : `<div style="font-size:2.6vw;font-weight:900">של מי התמונה? <span id="tleft" style="color:#ffd60a"></span></div><div class="tbar"><i id="tbar" style="width:100%"></i></div>`}
+            <div class="h-opts">${(state.options || []).map((id, i) => `<div class="h-opt ${isRev ? (id === state.ownerId ? 'right' : 'wrong') : ''}" data-id="${id}" style="background:${OPT_COLORS[i]};animation-delay:${i * 80}ms"><i class="vb" style="width:0"></i><span class="sh">${OPT_SHAPES[i]}</span>${av(id, 'av-h')}<span>${esc(nameOf(id))}</span><b class="vc"></b></div>`).join('')}</div>
             <div class="h-info" id="info"></div>
             ${isRev ? '<div id="share"></div>' : ''}
           </div></div></div>`;
@@ -600,18 +655,18 @@ function host() {
   function dynamic() {
     const ph = state.phase;
     if (ph === 'lobby') {
-      const j = $('#joined'); if (j) j.innerHTML = players.length ? players.map(p => `<span class="chip">${dot(p.name)}${esc(p.name)}</span>`).join('') : '<span style="color:var(--mut)">עוד אף אחד לא הצטרף…</span>';
+      const j = $('#joined'); if (j) j.innerHTML = players.length ? players.map(p => `<span class="chip">${av(p.personId)}${esc(p.name)}</span>`).join('') : '<span style="color:var(--mut)">עוד אף אחד לא הצטרף…</span>';
     }
     if (ph === 'question') {
-      const names = answers.map(a => players.find(p => p.id === a.deviceId)?.name).filter(Boolean);
-      const info = $('#info'); if (info) info.innerHTML = `ענו <b>${answers.length}</b> / ${players.length}<br>${names.map(n => `<span class="chip">${dot(n)}${esc(n)}</span>`).join('')}`;
+      const who = answers.map(a => players.find(p => p.id === a.deviceId)).filter(Boolean);
+      const info = $('#info'); if (info) info.innerHTML = `ענו <b>${answers.length}</b> / ${players.length}<br>${who.map(p => `<span class="chip">${av(p.personId)}${esc(p.name)}</span>`).join('')}`;
     }
     if (ph === 'reveal') {
       const votes = state.votes || {}, max = Math.max(1, ...Object.values(votes));
       $$('.h-opt').forEach(el => { const v = votes[el.dataset.id] || 0; el.querySelector('.vb').style.width = (v / max * 100) + '%'; el.querySelector('.vc').textContent = v ? `${v} 🙋` : ''; });
       const right = answers.filter(a => a.correct).sort((a, b) => b.points - a.points);
       const info = $('#info');
-      if (info) info.innerHTML = right.length ? `צדקו: ${right.map(a => `<span class="chip">${dot(players.find(p => p.id === a.deviceId)?.name)}${esc(players.find(p => p.id === a.deviceId)?.name || '')} <b>+${a.points}</b></span>`).join('')}` : 'אף אחד לא זיהה! 🕵️';
+      if (info) info.innerHTML = right.length ? `צדקו: ${right.map(a => `<span class="chip">${av(a.personId)}${esc(PEOPLE.get(a.personId)?.name || '')} <b>+${a.points}</b></span>`).join('')}` : 'אף אחד לא זיהה! 🕵️';
       const sh = $('#share'); const on = nameOf(state.ownerId);
       if (sh) sh.innerHTML = `<div class="h-share">${state.shared === true ? `🎤 ${esc(on)} מספר/ת…` : state.shared === false ? `⏭ ${esc(on)} מעדיף/ה לדלג` : `⏳ מחכים ל${esc(on)}…`}</div>`;
     }
@@ -653,13 +708,13 @@ function host() {
   function renderPodium() {
     const sorted = [...players].sort((a, b) => (b.score || 0) - (a.score || 0));
     const col3 = (p, place) => p ? `<div class="pcol p${place}">
-        <div class="dancer" style="--c:${pcolor(p.name)}"><div class="arm l"></div><div class="arm r"></div><div class="leg l"></div><div class="leg r"></div><div class="torso"></div><div class="head"></div><div class="eyes"><i></i><i></i></div><div class="mouth"></div></div>
+        <div class="dancer" style="--c:${pcolor(p.name)}"><div class="arm l"></div><div class="arm r"></div><div class="leg l"></div><div class="leg r"></div><div class="torso"></div>${PEOPLE.get(p.personId)?.avatar ? `<div class="head" style="background:center/cover url('${PEOPLE.get(p.personId).avatar}')"></div>` : `<div class="head"></div><div class="eyes"><i></i><i></i></div><div class="mouth"></div>`}</div>
         <div class="pname">${esc(p.name)}</div><div class="pscore">${p.score || 0} נק׳</div>
         <div class="pblock">${place}</div></div>` : '';
     app.innerHTML = `<div class="screen" id="hroot">${topBar(`<button class="btn sm ghost" id="back">↩ ללובי</button>`)}
       <h1 style="text-align:center;font-size:4vw;margin:0">🏆 המנצחים</h1>
       <div class="podium">${col3(sorted[1], 2)}${col3(sorted[0], 1)}${col3(sorted[2], 3)}</div>
-      <div class="others">${sorted.slice(3).map((p, i) => `<span class="chip">${i + 4}. ${esc(p.name)} · ${p.score || 0}</span>`).join('')}</div></div>`;
+      <div class="others">${sorted.slice(3).map((p, i) => `<span class="chip">${i + 4}. ${av(p.personId)}${esc(p.name)} · ${p.score || 0}</span>`).join('')}</div></div>`;
     confirmBtn($('#back'), () => updateDoc(gref, { phase: 'lobby', round: -1 }));
     const cf = document.createElement('div'); cf.className = 'confetti';
     const cols = ['#ff4d6d', '#4cc9f0', '#ffd60a', '#80ed99', '#c77dff', '#fff'];
@@ -676,9 +731,8 @@ function admin() {
     <div class="card"><label>📎 קישור להעלאת תמונות (לשלוח לקבוצה)</label>
       <div class="row"><input id="upl" readonly value="${esc(GAME_URL + '#upload')}"><button class="btn sm" id="cp">העתקה</button></div></div>
     <div class="card"><label>👥 משתתפים</label>
-      <div id="plist"></div>
-      <textarea id="names" rows="3" placeholder="הוספת שמות, שם בכל שורה"></textarea>
-      <button class="btn sm" id="addN" style="align-self:flex-start">הוספה</button></div>
+      <p class="sub" style="margin:0">כל אחד נרשם לבד עם שם ותמונת פרופיל, בדף ההעלאה או כשמצטרפים למשחק.</p>
+      <div id="plist"></div></div>
     <div class="card"><label>🖼️ תמונות</label><p class="sub" style="margin:0">לחצו "טשטוש" בתמונה שיש בה פנים חושפות. המערכת מזהה פנים אוטומטית, ואפשר להוסיף אזורים בגרירה.</p><div id="pgrid"></div></div>
     <div class="card"><label>🎛️ הגדרות משחק</label>
       <div class="row"><span>זמן לניחוש:</span><select id="dur" style="width:auto">${[10, 15, 20, 25, 30, 45].map(s => `<option value="${s}">${s} שניות</option>`).join('')}</select></div>
@@ -686,12 +740,6 @@ function admin() {
       <div class="msg" id="amsg"></div></div>
   </div>`;
   $('#cp').onclick = () => { $('#upl').select(); navigator.clipboard?.writeText($('#upl').value); $('#cp').textContent = 'הועתק ✓'; };
-  $('#addN').onclick = async () => {
-    const names = $('#names').value.split('\n').map(s => s.trim()).filter(Boolean);
-    const exist = new Set(people.map(p => p.name.trim()));
-    const b = writeBatch(db); names.filter(n => !exist.has(n)).forEach(n => b.set(dref('people', uid()), { name: n, createdAt: Date.now() }));
-    await b.commit(); $('#names').value = '';
-  };
   listen(gref, s => { state = s.data() || {}; $('#dur').value = String(state.duration || 20); });
   $('#dur').onchange = () => setDoc(gref, { duration: Number($('#dur').value) }, { merge: true });
   confirmBtn($('#rst'), async () => {
@@ -708,7 +756,7 @@ function admin() {
 
   function renderPeople() {
     const cnt = {}; photos.forEach(p => cnt[p.ownerId] = (cnt[p.ownerId] || 0) + 1);
-    $('#plist').innerHTML = people.map(p => `<span class="chip">${dot(p.name)}${esc(p.name)} <small style="color:var(--mut)">${cnt[p.id] || 0}/4 📷</small> <button class="btn sm ghost" style="padding:2px 8px" data-rm="${p.id}">✕</button></span>`).join('') || '<span style="color:var(--mut)">אין עדיין משתתפים</span>';
+    $('#plist').innerHTML = people.map(p => `<span class="chip">${av(p)}${esc(p.name)} <small style="color:var(--mut)">${cnt[p.id] || 0}/4 📷</small> <button class="btn sm ghost" style="padding:2px 8px" data-rm="${p.id}">✕</button></span>`).join('') || '<span style="color:var(--mut)">אין עדיין משתתפים</span>';
     $$('[data-rm]').forEach(b => confirmBtn(b, async () => {
       const id = b.dataset.rm;
       for (const ph of photos.filter(x => x.ownerId === id)) { await deleteDoc(dref('photos', ph.id)); await deleteDoc(dref('photoData', ph.id)); }
