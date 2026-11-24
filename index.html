@@ -343,7 +343,7 @@ const firebaseConfig = {
 const db = getFirestore(initializeApp(firebaseConfig));
 
 // Pages caches the page for ~10 minutes: if a newer version is online, reload once to get it
-const BUILD = '2026-11-24-2340';
+const BUILD = '2026-11-24-2342';
 (async () => {
   try {
     const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
@@ -912,6 +912,7 @@ function host() {
   listen(col('shouts'), s => {
     if (shoutsReady) s.docChanges().forEach(c => { if (c.type === 'added') { const t = (c.doc.data().text || '').trim(); if (t) shoutQ.push(t); } });
     shoutsReady = true;
+    handleShout(); // show right away, don't wait for the timer
   });
   function handleShout() {
     const now = Date.now(), b = $('#bub');
