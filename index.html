@@ -602,6 +602,8 @@ function registerUI(el, people, onDone) {
 /* ---------- music on the big screen ----------
    mp3 files are picked once in the admin page on the big-screen computer and kept only
    in that browser (IndexedDB), so they are never published. Without them: YouTube. */
+// the host's catchphrases, shown in his speech bubble
+const HOST_LINES = ['זין על אפל אחי', 'חולה על בננות', 'תן שם של סינים!'];
 const SONGS = { lobby: 'pALF48lFfkU', podium: 'aii3fDdZnrM' };
 const SONG_START = { lobby: 0, podium: 47 }; // seconds, for YouTube (mp3 files are already trimmed)
 const idb = () => new Promise((res, rej) => { const r = indexedDB.open('pg-music', 1); r.onupgradeneeded = () => r.result.createObjectStore('songs'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
@@ -867,7 +869,8 @@ function host() {
     const dur = (state.duration || 20) * 1000, left = Math.max(0, dur - (Date.now() - state.startedAt));
     const wax = $('#wax'); if (wax) wax.style.setProperty('--f', Math.max(0.04, left / dur));
     const t = $('#tleft'); if (t) t.textContent = Math.ceil(left / 1000) + ' שניות';
-    setBubble(left <= 5000 ? 'יאללה! תן שם של סינים!' : '');
+    const el = Date.now() - state.startedAt;
+    setBubble(el < 4500 ? HOST_LINES[state.round % HOST_LINES.length] : left <= 5000 ? 'יאללה! תן שם של סינים!' : '');
     const allIn = players.length > 0 && answers.length >= players.length;
     if (left <= 0 || allIn) reveal();
   }
@@ -1046,7 +1049,7 @@ function host() {
       if (info) info.innerHTML = right.length ? `צדקו: ${right.map(a => `<span class="chip">${av(a.personId)}${esc(PEOPLE.get(a.personId)?.name || '')} <b>+${a.points}</b></span>`).join('')}` : 'אף אחד לא זיהה! 🕵️';
       const sh = $('#share'); const on = nameOf(state.ownerId);
       if (sh) sh.innerHTML = `<div class="h-share">${state.shared === true ? `🎤 ${esc(on)} מספר/ת…` : state.shared === false ? `⏭ ${esc(on)} מעדיף/ה לדלג` : `⏳ מחכים ל${esc(on)}…`}</div>`;
-      setBubble(state.shared === true ? 'הבמה שלך! 🎤' : (state.voters && !state.correctCount) ? 'אף אחד?! 😱' : '');
+      setBubble(state.shared === true ? 'הבמה שלך! 🎤' : (state.voters && !state.correctCount) ? 'אף אחד?! 😱' : state.round % 2 ? HOST_LINES[(state.round + 1) % HOST_LINES.length] : '');
     }
   }
 
