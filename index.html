@@ -342,6 +342,19 @@ const firebaseConfig = {
 };
 const db = getFirestore(initializeApp(firebaseConfig));
 
+// Pages caches the page for ~10 minutes: if a newer version is online, reload once to get it
+const BUILD = '2026-11-24-2340';
+(async () => {
+  try {
+    const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
+    const live = (t.match(/const BUILD = '([^']+)'/) || [])[1];
+    if (live && live !== BUILD && sessionStorage.getItem('pg_reloaded') !== live) {
+      sessionStorage.setItem('pg_reloaded', live);
+      location.replace(location.pathname + '?v=' + live + location.hash);
+    }
+  } catch (e) {}
+})();
+
 /* ================= helpers ================= */
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
