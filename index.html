@@ -153,10 +153,12 @@ button.chip{color:#fff;cursor:pointer;font-size:15px}
 .hostfig img{display:block;height:100%;filter:drop-shadow(0 1vw 2vw #000b)}
 .hostfig.big{height:66vh}
 .hostfig.side{height:42vh;left:4vw}
-.bubble{position:absolute;bottom:92%;left:55%;background:#fff;color:#1a1033;font-family:'Suez One',Rubik,serif;border-radius:1.4vw;padding:.7vw 1.3vw;font-size:1.7vw;white-space:nowrap;box-shadow:0 .4vw 0 #0005;animation:pop .4s both;border:.25vw solid #1a1033}
-.bubble::after{content:'';position:absolute;bottom:-1.1vw;left:2vw;border:.9vw solid transparent;border-top:1.2vw solid #1a1033;border-bottom:0}
+.bubble{--bb:#fff;position:absolute;bottom:74%;left:56%;background:var(--bb);color:#1a1033;font-family:'Suez One',Rubik,serif;border-radius:2.6vw;padding:1vw 1.8vw;font-size:1.8vw;white-space:nowrap;box-shadow:0 .5vw 0 #0005;animation:balloon .45s cubic-bezier(.3,1.6,.5,1) both;border:.3vw solid #1a1033;transform-origin:0 100%;z-index:6}
+.bubble::before{content:'';position:absolute;left:-2.6vw;bottom:-.9vw;width:3.4vw;height:2.8vw;background:#1a1033;clip-path:polygon(100% 0,85% 75%,0 100%)}
+.bubble::after{content:'';position:absolute;left:-1.85vw;bottom:-.25vw;width:2.6vw;height:2.1vw;background:var(--bb);clip-path:polygon(100% 0,85% 72%,0 100%)}
+@keyframes balloon{0%{transform:scale(.2);opacity:0}100%{transform:scale(1);opacity:1}}
 .bubble[hidden]{display:none}
-.bubble.shout{background:#fff3c4;border-color:#a3132a;max-width:34vw;white-space:normal;font-size:1.9vw}
+.bubble.shout{--bb:#fff3c4;max-width:36vw;width:max-content;white-space:normal;font-size:2.1vw;line-height:1.25}
 .shoutbar{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;align-items:center;gap:10px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#0b1440ee,#070e30);border-top:2px solid #ffd45c66;direction:rtl}
 .shoutbar .hf{width:52px;height:52px;border-radius:50%;border:3px solid #e3ae3a;flex:none;box-shadow:0 4px 12px #0008}
 .shoutbar .sbub{position:relative;flex:1;display:flex;align-items:center;gap:6px;background:#fff;border-radius:18px;padding:4px 6px 4px 4px;border:2px solid #1a1033}
@@ -343,7 +345,7 @@ const firebaseConfig = {
 const db = getFirestore(initializeApp(firebaseConfig));
 
 // Pages caches the page for ~10 minutes: if a newer version is online, reload once to get it
-const BUILD = '2026-11-24-2342';
+const BUILD = '2026-11-24-2345';
 (async () => {
   try {
     const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
@@ -774,15 +776,15 @@ function upload() {
 function addShoutBar(getPerson) {
   if ($('.shoutbar')) return;
   const bar = document.createElement('div'); bar.className = 'shoutbar';
-  bar.innerHTML = `<img class="hf" src="assets/host-face.png" alt=""><div class="sbub"><input id="shoutIn" maxlength="70" placeholder="מה המנחה יגיד עכשיו?"><button id="shoutGo" aria-label="שליחה">➤</button></div><span class="sent" id="shoutMsg"></span>`;
+  bar.innerHTML = `<img class="hf" src="assets/host-face.png" alt=""><div class="sbub"><input id="shoutIn" maxlength="70" placeholder="מה יובל אמר?"><button id="shoutGo" aria-label="שליחה">➤</button></div><span class="sent" id="shoutMsg"></span>`;
   document.body.appendChild(bar); document.body.classList.add('playmode');
   let last = 0;
   const send = async () => {
     const inp = $('#shoutIn'), t = inp.value.trim(), m = $('#shoutMsg'); if (!t) return;
     const wait = 8000 - (Date.now() - last);
     if (wait > 0) { m.textContent = `רגע… עוד ${Math.ceil(wait / 1000)} שניות`; return; }
-    last = Date.now(); inp.value = ''; m.textContent = 'נשלח למנחה ✓';
-    setTimeout(() => { if (m.textContent === 'נשלח למנחה ✓') m.textContent = ''; }, 2500);
+    last = Date.now(); inp.value = ''; m.textContent = 'נשלח ליובל ✓';
+    setTimeout(() => { if (m.textContent === 'נשלח ליובל ✓') m.textContent = ''; }, 2500);
     try { await setDoc(dref('shouts', uid()), { text: t.slice(0, 70), personId: getPerson() || '', at: Date.now() }); } catch (e) { m.textContent = 'לא נשלח, נסו שוב'; }
   };
   $('#shoutGo').onclick = send;
@@ -908,7 +910,7 @@ function host() {
   document.onkeydown = e => { unlock(); if (['Space', 'Enter', 'ArrowLeft'].includes(e.code)) { e.preventDefault(); next(); } };
 
   // sentences sent from phones for the host to say (shown 5.5s each, queued)
-  const shoutQ = []; let shoutUntil = 0, curShout = '', shoutsReady = false;
+  const shoutQ = []; let shoutUntil = 0, shoutStart = 0, curShout = '', shoutsReady = false;
   listen(col('shouts'), s => {
     if (shoutsReady) s.docChanges().forEach(c => { if (c.type === 'added') { const t = (c.doc.data().text || '').trim(); if (t) shoutQ.push(t); } });
     shoutsReady = true;
@@ -916,12 +918,12 @@ function host() {
   });
   function handleShout() {
     const now = Date.now(), b = $('#bub');
-    if (shoutUntil && now >= shoutUntil) {
+    if (shoutUntil && now >= shoutStart + (shoutQ.length ? 3500 : 5500)) {
       shoutUntil = 0; curShout = '';
       if (b) { const d = b.dataset.def || ''; b.classList.remove('shout'); b.textContent = d; b.hidden = !d; }
     }
     if (!shoutUntil && shoutQ.length) {
-      curShout = shoutQ.shift(); shoutUntil = now + 5500;
+      curShout = shoutQ.shift(); shoutStart = now; shoutUntil = now + 5500;
       if (b) { b.classList.add('shout'); b.textContent = curShout; b.hidden = false; b.style.animation = 'none'; void b.offsetWidth; b.style.animation = ''; }
     } else if (shoutUntil && b && (b.textContent !== curShout || b.hidden)) { b.classList.add('shout'); b.textContent = curShout; b.hidden = false; }
   }
