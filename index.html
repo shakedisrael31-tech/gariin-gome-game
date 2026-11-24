@@ -449,7 +449,7 @@ function addStage() {
 const GAME_URL = location.origin + location.pathname;
 
 let unsubs = [], timers = [];
-function cleanup() { unsubs.forEach(u => { try { u(); } catch (e) {} }); unsubs = []; timers.forEach(clearInterval); timers = []; document.onkeydown = null; document.body.classList.remove('hostmode'); $('.confetti')?.remove(); $('.stage')?.remove(); $('.ytbox')?.remove(); ytP = null; ytReady = null; curSong = null; app.onclick = null; document.onpointerdown = null; }
+function cleanup() { unsubs.forEach(u => { try { u(); } catch (e) {} }); unsubs = []; timers.forEach(clearInterval); timers = []; document.onkeydown = null; document.body.classList.remove('hostmode'); $('.confetti')?.remove(); $('.stage')?.remove(); $('.ytbox')?.remove(); try { audioEl?.pause(); } catch (e) {} ytP = null; ytReady = null; curSong = null; app.onclick = null; document.onpointerdown = null; }
 const listen = (ref, cb) => unsubs.push(onSnapshot(ref, cb, err => console.error(err)));
 
 function watchPeople(cb) {
@@ -541,10 +541,20 @@ function registerUI(el, people, onDone) {
   $$('.pick', el).forEach(b => b.onclick = () => { const p = people.find(x => x.id === b.dataset.id); localStorage.setItem('pg_person', p.id); onDone(p.id, p.name); });
 }
 
-/* ---------- music on the big screen (YouTube, automatic) ---------- */
+/* ---------- music on the big screen ----------
+   mp3 files are picked once in the admin page on the big-screen computer and kept only
+   in that browser (IndexedDB), so they are never published. Without them: YouTube. */
 const SONGS = { lobby: 'pALF48lFfkU', podium: 'aii3fDdZnrM' };
 const SONG_START = { lobby: 0, podium: 18 }; // seconds
-let musicOn = true, unlocked = false, ytP = null, ytReady = null, curSong = null;
+const idb = () => new Promise((res, rej) => { const r = indexedDB.open('pg-music', 1); r.onupgradeneeded = () => r.result.createObjectStore('songs'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+async function songPut(key, blob) { const d = await idb(); return new Promise((res, rej) => { const t = d.transaction('songs', 'readwrite'); t.objectStore('songs').put(blob, key); t.oncomplete = res; t.onerror = () => rej(t.error); }); }
+async function songGet(key) { try { const d = await idb(); return await new Promise(res => { const q = d.transaction('songs').objectStore('songs').get(key); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); }); } catch (e) { return null; } }
+let musicOn = true, unlocked = false, ytP = null, ytReady = null, curSong = null, audioEl = null;
+const songUrls = {};
+async function localSongUrl(kind) {
+  if (!(kind in songUrls)) { const b = await songGet(kind); songUrls[kind] = b ? URL.createObjectURL(b) : null; }
+  return songUrls[kind];
+}
 function ensurePlayer() {
   if (ytReady) return ytReady;
   const box = document.createElement('div'); box.className = 'ytbox'; box.hidden = true; box.innerHTML = '<div id="ytp"></div>';
@@ -562,14 +572,27 @@ function ensurePlayer() {
   });
   return ytReady;
 }
+function stopAll() { try { audioEl?.pause(); } catch (e) {} try { ytP?.pauseVideo(); } catch (e) {} const box = $('.ytbox'); if (box) box.hidden = true; }
 async function syncMusic(phase) {
   const want = musicOn ? (phase === 'lobby' ? 'lobby' : phase === 'podium' ? 'podium' : null) : null;
-  const p = await ensurePlayer();
-  $('.ytbox').hidden = !want;
   if (want === curSong) return;
-  curSong = want;
-  if (!want) { try { p.pauseVideo(); } catch (e) {} return; }
-  p.loadVideoById({ videoId: SONGS[want], startSeconds: SONG_START[want] || 0 }); p.setVolume(80); p.unMute();
+  curSong = want; stopAll();
+  if (!want) return;
+  const url = await localSongUrl(want);
+  if (curSong !== want) return;
+  if (url) {
+    if (!audioEl) {
+      audioEl = new Audio();
+      audioEl.addEventListener('ended', () => { audioEl.currentTime = SONG_START[curSong] || 0; audioEl.play().catch(() => {}); });
+    }
+    audioEl.src = url; audioEl.volume = 0.85;
+    const start = SONG_START[want] || 0;
+    const go = () => { audioEl.currentTime = start; audioEl.play().catch(e => console.warn('audio', e)); };
+    if (audioEl.readyState >= 1) go(); else audioEl.addEventListener('loadedmetadata', go, { once: true });
+  } else {
+    const p = await ensurePlayer(); if (curSong !== want) return;
+    $('.ytbox').hidden = false; p.loadVideoById({ videoId: SONGS[want], startSeconds: SONG_START[want] || 0 }); p.setVolume(80); p.unMute();
+  }
 }
 
 /* ================= router ================= */
@@ -1048,11 +1071,24 @@ function admin() {
       <p class="sub" style="margin:0">כל אחד נרשם לבד עם שם ותמונת פרופיל, בדף ההעלאה או כשמצטרפים למשחק.</p>
       <div id="plist"></div></div>
     <div class="card"><label>🖼️ תמונות</label><p class="sub" style="margin:0">לחצו "טשטוש" בתמונה שיש בה פנים חושפות. המערכת מזהה פנים אוטומטית, ואפשר להוסיף אזורים בגרירה.</p><div id="pgrid"></div></div>
+    <div class="card"><label>🎵 שירים למסך הגדול</label>
+      <p class="sub" style="margin:0">פעם אחת, במחשב שיריץ את המסך הגדול: בוחרים את קובצי ה-MP3. הם נשמרים רק בדפדפן הזה ומתנגנים ברקע אוטומטית. בלי קובץ, השיר יתנגן מ-YouTube.</p>
+      <div class="row" style="flex-wrap:wrap"><span style="min-width:110px">🎉 שיר לובי:</span><label class="btn sm ghost">בחירת קובץ<input type="file" accept="audio/*" id="songLobby" hidden></label><span id="stLobby" class="msg"></span></div>
+      <div class="row" style="flex-wrap:wrap"><span style="min-width:110px">🏆 שיר פודיום:</span><label class="btn sm ghost">בחירת קובץ<input type="file" accept="audio/*" id="songPodium" hidden></label><span id="stPodium" class="msg"></span></div>
+    </div>
     <div class="card"><label>🎛️ הגדרות משחק</label>
       <div class="row"><span>זמן לניחוש:</span><select id="dur" style="width:auto">${[10, 15, 20, 25, 30, 45].map(s => `<option value="${s}">${s} שניות</option>`).join('')}</select></div>
       <div class="row" style="flex-wrap:wrap"><a class="btn sm alt" href="#host">🖥️ למסך הגדול</a><button class="btn sm ghost" id="rst">♻️ איפוס משחק (ניקוד ומחוברים)</button><button class="btn sm ghost" id="wipe">🗑️ מחיקת כל התמונות</button></div>
       <div class="msg" id="amsg"></div></div>
   </div>`;
+  const songStatus = async () => {
+    for (const [k, el] of [['lobby', '#stLobby'], ['podium', '#stPodium']]) { const b = await songGet(k); $(el).textContent = b ? `✓ ${b.name || 'נשמר'}` : 'לא נבחר (יתנגן מ-YouTube)'; }
+  };
+  for (const [k, id] of [['lobby', '#songLobby'], ['podium', '#songPodium']]) $(id).onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    await songPut(k, new File([f], f.name, { type: f.type })); delete songUrls[k]; songStatus();
+  };
+  songStatus();
   $('#cp').onclick = () => { $('#upl').select(); navigator.clipboard?.writeText($('#upl').value); $('#cp').textContent = 'הועתק ✓'; };
   listen(gref, s => { state = s.data() || {}; $('#dur').value = String(state.duration || 20); });
   $('#dur').onchange = () => setDoc(gref, { duration: Number($('#dur').value) }, { merge: true });
