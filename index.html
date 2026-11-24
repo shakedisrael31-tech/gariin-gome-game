@@ -545,7 +545,7 @@ function registerUI(el, people, onDone) {
    mp3 files are picked once in the admin page on the big-screen computer and kept only
    in that browser (IndexedDB), so they are never published. Without them: YouTube. */
 const SONGS = { lobby: 'pALF48lFfkU', podium: 'aii3fDdZnrM' };
-const SONG_START = { lobby: 0, podium: 37 }; // seconds, for YouTube (mp3 files are already trimmed)
+const SONG_START = { lobby: 0, podium: 46 }; // seconds, for YouTube (mp3 files are already trimmed)
 const idb = () => new Promise((res, rej) => { const r = indexedDB.open('pg-music', 1); r.onupgradeneeded = () => r.result.createObjectStore('songs'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
 async function songPut(key, blob) { const d = await idb(); return new Promise((res, rej) => { const t = d.transaction('songs', 'readwrite'); t.objectStore('songs').put(blob, key); t.oncomplete = res; t.onerror = () => rej(t.error); }); }
 async function songGet(key) { try { const d = await idb(); return await new Promise(res => { const q = d.transaction('songs').objectStore('songs').get(key); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); }); } catch (e) { return null; } }
