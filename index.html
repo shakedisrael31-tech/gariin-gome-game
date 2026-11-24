@@ -519,7 +519,7 @@ async function imgToAvatar(img) {
   const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
   const f = await faceBox(img);
   let side, cx, cy;
-  if (f) { side = Math.min(Math.max(f.w, f.h) * 2.2, W, H); cx = f.x + f.w / 2; cy = f.y + f.h / 2 + f.h * 0.05; }
+  if (f) { side = Math.min(Math.max(f.w, f.h) * 3, W, H); cx = f.x + f.w / 2; cy = f.y + f.h / 2; }
   else { side = Math.min(W, H); cx = W / 2; cy = H / 2.4; }
   const sx = Math.max(0, Math.min(W - side, cx - side / 2)), sy = Math.max(0, Math.min(H - side, cy - side / 2));
   const c = document.createElement('canvas'); c.width = c.height = 320;
