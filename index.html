@@ -119,6 +119,7 @@ body.hostmode .screen{max-width:none;padding:2.2vw 3vw}
 .p3 .dancer{animation:dance3 .5s ease-in-out infinite alternate}
 .dancer .head{position:absolute;top:0;left:50%;width:6vw;height:6vw;margin-left:-3vw;border-radius:50%;background:var(--c);display:flex;align-items:center;justify-content:center;font-size:2.8vw;font-weight:900;color:#1a1033;z-index:2;box-shadow:inset -.5vw -.5vw 0 #0002}
 .dancer .eyes{position:absolute;top:2.2vw;left:50%;width:2.6vw;margin-left:-1.3vw;display:flex;justify-content:space-between;z-index:3}
+.dancer .mouth{position:absolute;top:3.4vw;left:50%;width:2vw;height:1vw;margin-left:-1vw;border-radius:0 0 1vw 1vw;background:#1a1033;z-index:3}
 .dancer .eyes i{width:.6vw;height:.6vw;border-radius:50%;background:#1a1033}
 .dancer .torso{position:absolute;top:5.6vw;left:50%;width:4.6vw;height:5vw;margin-left:-2.3vw;border-radius:2vw 2vw 1vw 1vw;background:var(--c);filter:brightness(.85)}
 .dancer .arm{position:absolute;top:6vw;width:1.2vw;height:4.6vw;border-radius:1vw;background:var(--c);filter:brightness(.75);transform-origin:top center}
@@ -652,7 +653,7 @@ function host() {
   function renderPodium() {
     const sorted = [...players].sort((a, b) => (b.score || 0) - (a.score || 0));
     const col3 = (p, place) => p ? `<div class="pcol p${place}">
-        <div class="dancer" style="--c:${pcolor(p.name)}"><div class="arm l"></div><div class="arm r"></div><div class="leg l"></div><div class="leg r"></div><div class="torso"></div><div class="head">${esc(p.name.trim()[0] || '?')}</div><div class="eyes"><i></i><i></i></div></div>
+        <div class="dancer" style="--c:${pcolor(p.name)}"><div class="arm l"></div><div class="arm r"></div><div class="leg l"></div><div class="leg r"></div><div class="torso"></div><div class="head"></div><div class="eyes"><i></i><i></i></div><div class="mouth"></div></div>
         <div class="pname">${esc(p.name)}</div><div class="pscore">${p.score || 0} נק׳</div>
         <div class="pblock">${place}</div></div>` : '';
     app.innerHTML = `<div class="screen" id="hroot">${topBar(`<button class="btn sm ghost" id="back">↩ ללובי</button>`)}
