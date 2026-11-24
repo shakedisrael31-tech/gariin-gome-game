@@ -752,7 +752,11 @@ async function detectFaces(img) {
     c.width = Math.round(sw * sc); c.height = Math.round(sh * sc);
     c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
     for (const d of det.detect(c).detections) {
-      const b = d.boundingBox; found.push({ x: sx + b.originX / sc, y: sy + b.originY / sc, w: b.width / sc, h: b.height / sc });
+      const b = d.boundingBox, score = d.categories?.[0]?.score ?? 1;
+      if (score < 0.6 || b.width < 12 || b.height < 12 || b.width > c.width * 0.9 || b.height > c.height * 0.9) continue;
+      const ar = b.width / b.height; if (ar < 0.5 || ar > 2) continue;
+      if (b.originX < -b.width * 0.3 || b.originY < -b.height * 0.3 || b.originX + b.width > c.width * 1.1 || b.originY + b.height > c.height * 1.1) continue;
+      found.push({ x: sx + b.originX / sc, y: sy + b.originY / sc, w: b.width / sc, h: b.height / sc });
     }
   };
   run(0, 0, W, H);
@@ -763,7 +767,11 @@ async function detectFaces(img) {
   const out = [];
   found.sort((a, b) => b.w * b.h - a.w * a.h).forEach(f => { if (!out.some(o => iou(o, f) > 0.3)) out.push(f); });
   // grow box to cover hair / chin
-  return out.map(f => { const w = f.w * 1.45, h = f.h * 1.7; return { x: Math.max(0, f.x + f.w / 2 - w / 2), y: Math.max(0, f.y + f.h / 2 - h * 0.55), w, h }; });
+  return out.map(f => {
+    const w = f.w * 1.45, h = f.h * 1.7;
+    const x = Math.max(0, f.x + f.w / 2 - w / 2), y = Math.max(0, f.y + f.h / 2 - h * 0.55);
+    return { x, y, w: Math.min(w, W - x), h: Math.min(h, H - y) };
+  });
 }
 function blurBox(ctx, b) {
   const tw = Math.max(2, Math.round(b.w / 16)), th = Math.max(2, Math.round(b.h / 16));
