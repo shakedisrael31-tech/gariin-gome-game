@@ -353,7 +353,7 @@ function pixOf(id, src) {
 const PEOPLE = new Map();
 const av = (pp, cls = '') => {
   const p = typeof pp === 'string' ? PEOPLE.get(pp) : pp; const name = p?.name || '?';
-  return p?.avatar ? `<img class="dot avimg pix ${cls}" data-av="${p.id}" src="${pixOf(p.id, p.avatar)}" alt="">` : `<span class="dot ${cls}" style="background:${pcolor(name)}">${esc(name.trim()[0] || '?')}</span>`;
+  return p?.avatar ? `<img class="dot avimg ${cls}" src="${p.avatar}" alt="">` : `<span class="dot ${cls}" style="background:${pcolor(name)}">${esc(name.trim()[0] || '?')}</span>`;
 };
 
 const avFull = id => { const p = PEOPLE.get(id); return p?.avatar ? `<img src="${p.avatar}" alt="">` : `<span class="dot" style="background:${pcolor(p?.name || '?')}">${esc((p?.name || '?').trim()[0] || '?')}</span>`; };
@@ -501,14 +501,35 @@ async function fileToJpeg(file, max = 1280) {
   } finally { URL.revokeObjectURL(url); }
 }
 
+// find the biggest face in an image (null if none / detector unavailable)
+async function faceBox(img) {
+  try {
+    const det = await Promise.race([getDetector(), new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 9000))]);
+    const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height, sc = Math.min(1, 1024 / Math.max(W, H));
+    const c = document.createElement('canvas'); c.width = Math.round(W * sc); c.height = Math.round(H * sc);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    const d = det.detect(c).detections.filter(x => (x.categories?.[0]?.score ?? 1) >= 0.5);
+    if (!d.length) return null;
+    const b = d.sort((p, q) => q.boundingBox.width * q.boundingBox.height - p.boundingBox.width * p.boundingBox.height)[0].boundingBox;
+    return { x: b.originX / sc, y: b.originY / sc, w: b.width / sc, h: b.height / sc };
+  } catch (e) { console.warn('face detect', e); return null; }
+}
+// square profile picture centred on the face (head + a bit of shoulders), sharp, 320px
+async function imgToAvatar(img) {
+  const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+  const f = await faceBox(img);
+  let side, cx, cy;
+  if (f) { side = Math.min(Math.max(f.w, f.h) * 2.2, W, H); cx = f.x + f.w / 2; cy = f.y + f.h / 2 + f.h * 0.05; }
+  else { side = Math.min(W, H); cx = W / 2; cy = H / 2.4; }
+  const sx = Math.max(0, Math.min(W - side, cx - side / 2)), sy = Math.max(0, Math.min(H - side, cy - side / 2));
+  const c = document.createElement('canvas'); c.width = c.height = 320;
+  const x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
+  x.drawImage(img, sx, sy, side, side, 0, 0, 320, 320);
+  return c.toDataURL('image/jpeg', 0.85);
+}
 async function fileToAvatar(file) {
   const url = URL.createObjectURL(file);
-  try {
-    const img = await loadImg(url); const s = Math.min(img.naturalWidth, img.naturalHeight);
-    const c = document.createElement('canvas'); c.width = c.height = 256;
-    c.getContext('2d').drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, 256, 256);
-    return c.toDataURL('image/jpeg', 0.8);
-  } finally { URL.revokeObjectURL(url); }
+  try { return await imgToAvatar(await loadImg(url)); } finally { URL.revokeObjectURL(url); }
 }
 
 // self sign-up: name + profile photo (or pick yourself if already registered)
@@ -524,6 +545,7 @@ function registerUI(el, people, onDone) {
   const inp = $('input[type=file]', el), prev = $('.avprev', el), msg = $('.rmsg', el);
   inp.onchange = async () => {
     const f = inp.files[0]; if (!f) return;
+    msg.textContent = 'מזהה פנים…';
     try { avatar = await fileToAvatar(f); prev.innerHTML = `<img src="${avatar}" alt="">`; msg.textContent = ''; }
     catch (e) { msg.textContent = 'לא הצלחתי לקרוא את התמונה, נסו אחרת'; }
   };
@@ -534,7 +556,7 @@ function registerUI(el, people, onDone) {
     if (people.some(p => p.name.trim() === name)) { msg.textContent = `כבר יש "${name}". אם זה את/ה, בחרו מ"כבר נרשמת". אחרת הוסיפו אות משפחה`; return; }
     $('.rgo', el).disabled = true;
     const id = uid();
-    try { await setDoc(dref('people', id), { name, avatar, createdAt: Date.now() }); }
+    try { await setDoc(dref('people', id), { name, avatar, fc: true, createdAt: Date.now() }); }
     catch (e) { console.error(e); msg.textContent = 'משהו השתבש, נסו שוב'; $('.rgo', el).disabled = false; return; }
     localStorage.setItem('pg_person', id); onDone(id, name);
   };
@@ -638,7 +660,7 @@ function upload() {
       <label class="lnk">החלפת תמונת פרופיל<input type="file" accept="image/*" hidden id="chAv"></label></div>
       <button class="btn sm ghost" id="notMe">זה לא אני</button></div></div>`;
     $('#notMe').onclick = () => { me = ''; localStorage.removeItem('pg_person'); whoKey = ''; renderWho(); watchMine(); };
-    $('#chAv').onchange = async e => { const f = e.target.files[0]; if (!f) return; await updateDoc(dref('people', me), { avatar: await fileToAvatar(f) }); };
+    $('#chAv').onchange = async e => { const f = e.target.files[0]; if (!f) return; await updateDoc(dref('people', me), { avatar: await fileToAvatar(f), fc: true }); };
   }
   function watchMine() {
     if (unsubMine) unsubMine();
@@ -1101,7 +1123,15 @@ function admin() {
   confirmBtn($('#wipe'), async () => {
     $('#amsg').textContent = 'מוחק…'; await deleteAll('photos'); await deleteAll('photoData'); imgCache.clear(); $('#amsg').textContent = 'כל התמונות נמחקו ✓';
   });
-  watchPeople(p => { people = p; renderPeople(); renderPhotos(); });
+  let recropping = false;
+  watchPeople(async p => {
+    people = p; renderPeople(); renderPhotos();
+    if (recropping) return; recropping = true;
+    for (const x of p.filter(x => x.avatar && !x.fc)) {
+      try { await updateDoc(dref('people', x.id), { avatar: await imgToAvatar(await loadImg(x.avatar)), fc: true }); } catch (e) { console.warn(e); }
+    }
+    recropping = false;
+  });
   listen(col('photos'), s => { photos = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)); renderPeople(); renderPhotos(); });
 
   function renderPeople() {
