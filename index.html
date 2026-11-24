@@ -100,8 +100,8 @@ button.chip{color:#fff;cursor:pointer;font-size:15px}
 
 /* menorah */
 .menorah .flames{filter:drop-shadow(0 0 3px #ffb300)}
-.maneki .paw{transform-box:fill-box;transform-origin:50% 100%;animation:mwave .45s ease-in-out infinite alternate}
-@keyframes mwave{from{transform:rotate(-22deg)}to{transform:rotate(16deg)}}
+.maneki .paw{transform-box:fill-box;transform-origin:50% 95%;animation:mwave .45s ease-in-out infinite alternate}
+@keyframes mwave{from{transform:rotate(-14deg)}to{transform:rotate(12deg)}}
 .menorah .fl{transform-box:fill-box;transform-origin:50% 100%;animation:flick2 .16s infinite alternate}
 @keyframes flick2{to{transform:scaleY(1.18) scaleX(.86)}}
 
@@ -415,8 +415,8 @@ const MANEKI = [
   '.KWWWWWWWWWWWWWK..',
   'KWWEEWWWWWWEEWWWK.',
   'KWWWWWWWWWWWWWWWK.',
-  'KWPWWWWKKKWWWWPWK.',
-  '.KWWWWWWWWWWWWWK..',
+  'KWPWWWWKWKWWWWPWK.',
+  '.KWWWWWWKWWWWWWK..',
   '..KRRRRRYYRRRRK...',
   '.KWWWWWWYYWWWWWWK.',
   'KWWWWWWWWWWWWWWWK.',
@@ -428,11 +428,11 @@ const MANEKI = [
   '.KRRRRRRRRRRRRRK..',
   '.KRRRRRRRRRRRRRK..',
   '..KKKKKKKKKKKKK...'];
-const MANEKI_PAW = ['.KKK.', 'KWWWK', 'KWPWK', 'KWWWK', '.KWK.', '.KWK.', '.KWK.'];
+const MANEKI_PAW = ['.KKK.', 'KWWWK', 'KWPWK', 'KWWWK', '.KWK.', '.KWK.', '.KWK.', '.KWK.', '.KWK.', '.KWK.', '.KWK.'];
 function pixRects(rows, ox = 0, oy = 0) {
   let r = ''; rows.forEach((row, y) => [...row].forEach((ch, x) => { if (PAL[ch]) r += `<rect x="${x + ox}" y="${y + oy}" width="1.04" height="1.04" fill="${PAL[ch]}"/>`; })); return r;
 }
-const manekiSVG = (cls = '') => `<svg class="maneki ${cls}" viewBox="-1 -6 22 26" shape-rendering="crispEdges">${pixRects(MANEKI)}<g class="paw">${pixRects(MANEKI_PAW, 15, -5)}</g></svg>`;
+const manekiSVG = (cls = '') => `<svg class="maneki ${cls}" viewBox="-1 -6 22 26" shape-rendering="crispEdges">${pixRects(MANEKI)}<g class="paw">${pixRects(MANEKI_PAW, 14, -1)}</g></svg>`;
 function pixelSVG(rows, cls = '') {
   const h = rows.length, w = rows[0].length; let r = '';
   rows.forEach((row, y) => [...row].forEach((ch, x) => { if (PAL[ch]) r += `<rect x="${x}" y="${y}" width="1.04" height="1.04" fill="${PAL[ch]}"/>`; }));
