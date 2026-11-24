@@ -248,7 +248,28 @@ button.chip{color:#fff;cursor:pointer;font-size:15px}
 .p2 .dancer{animation:dance2 .7s ease-in-out infinite alternate}
 .p3 .dancer{animation:dance3 .5s ease-in-out infinite alternate}
 .dancer .head{position:absolute;top:0;left:50%;width:6vw;height:6vw;margin-left:-3vw;border-radius:1vw;overflow:hidden;z-index:3;border:.3vw solid #fff;box-shadow:0 .3vw 0 #0005;background:var(--c)}
-.dancer .head .dot{width:100%;height:100%;border-radius:0;font-size:2.8vw}
+.dancer .head{border-radius:50%!important}
+.dancer .head img,.dancer .head .dot{width:100%;height:100%;border-radius:0;font-size:2.8vw;object-fit:cover;display:block}
+.kcrown{position:absolute;top:-3.1vw;left:50%;width:5.2vw;margin-left:-2.6vw;z-index:6;filter:drop-shadow(0 .3vw .3vw #0008);animation:ktilt .6s ease-in-out infinite alternate}
+@keyframes ktilt{from{transform:rotate(-8deg)}to{transform:rotate(8deg)}}
+.loser{position:absolute;right:9vw;bottom:11.5vh;z-index:3;display:flex;flex-direction:column;align-items:center;animation:fadeUp 1s 1.2s both}
+.loser .dancer{animation:sadsway 2.6s ease-in-out infinite alternate}
+.loser .dancer .torso,.loser .dancer .arm{background:url(assets/shirt.jpg) center/cover;filter:none}
+.loser .dancer .torso{border-radius:1.4vw 1.4vw .6vw .6vw;height:5.4vw}
+.loser .dancer .arm{animation:none;top:6.2vw}
+.loser .dancer .arm.l{transform:rotate(12deg)}.loser .dancer .arm.r{transform:rotate(-12deg)}
+.loser .dancer .leg{animation:none}
+.loser .dancer .head{transform:rotate(-12deg);filter:saturate(.6)}
+.loser .tear{position:absolute;top:3.4vw;left:3.4vw;width:.8vw;height:1.1vw;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:#7cc8ff;z-index:7;animation:tear 1.6s ease-in infinite}
+@keyframes tear{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(4vw);opacity:0}}
+.cloud{position:relative;width:7vw;height:2.6vw;margin-bottom:.6vw;background:#9aa3b8;border-radius:2vw;box-shadow:inset 0 -.4vw 0 #0002}
+.cloud::before{content:'';position:absolute;left:1.2vw;top:-1.4vw;width:2.8vw;height:2.8vw;border-radius:50%;background:#9aa3b8}
+.cloud::after{content:'';position:absolute;left:3.2vw;top:-2vw;width:3vw;height:3vw;border-radius:50%;background:#9aa3b8}
+.cloud i{position:absolute;top:2.6vw;width:.25vw;height:1vw;background:#7cc8ff;border-radius:.2vw;animation:rain .7s linear infinite}
+@keyframes rain{from{transform:translateY(0);opacity:1}to{transform:translateY(3vw);opacity:0}}
+@keyframes sadsway{from{transform:rotate(-3deg) translateY(0)}to{transform:rotate(3deg) translateY(.4vw)}}
+.lplate{margin-top:.4vw;background:linear-gradient(#cfd4dc,#8f98a8);color:#2a2f3a;border-radius:.6vw;padding:.3vw 1vw;text-align:center;font-family:'Suez One',Rubik,serif;font-size:1.3vw;border:.2vw solid #fff8}
+.lplate b{display:block;font-size:1.6vw;color:#1a1f2a}
 .dancer .torso{position:absolute;top:5.6vw;left:50%;width:4.6vw;height:5vw;margin-left:-2.3vw;border-radius:2vw 2vw 1vw 1vw;background:var(--c);filter:brightness(.85)}
 .dancer .lei{position:absolute;top:6.1vw;left:50%;width:5.8vw;height:2.6vw;margin-left:-2.9vw;border:.85vw dotted #fff;border-top:0;border-radius:0 0 3vw 3vw;z-index:4;filter:drop-shadow(0 .1vw 0 #0004)}
 .dancer .arm{position:absolute;top:6vw;width:1.2vw;height:4.6vw;border-radius:1vw;background:var(--c);filter:brightness(.75);transform-origin:top center}
@@ -334,6 +355,9 @@ const av = (pp, cls = '') => {
   const p = typeof pp === 'string' ? PEOPLE.get(pp) : pp; const name = p?.name || '?';
   return p?.avatar ? `<img class="dot avimg pix ${cls}" data-av="${p.id}" src="${pixOf(p.id, p.avatar)}" alt="">` : `<span class="dot ${cls}" style="background:${pcolor(name)}">${esc(name.trim()[0] || '?')}</span>`;
 };
+
+const avFull = id => { const p = PEOPLE.get(id); return p?.avatar ? `<img src="${p.avatar}" alt="">` : `<span class="dot" style="background:${pcolor(p?.name || '?')}">${esc((p?.name || '?').trim()[0] || '?')}</span>`; };
+const CROWN = `<svg class="kcrown" viewBox="0 0 64 44"><defs><linearGradient id="kg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#fff3b0"/><stop offset=".5" stop-color="#ffc928"/><stop offset="1" stop-color="#c98a00"/></linearGradient></defs><path d="M4 40 L8 12 L20 26 L32 4 L44 26 L56 12 L60 40 Z" fill="url(#kg)" stroke="#7a4b00" stroke-width="2.5" stroke-linejoin="round"/><rect x="4" y="36" width="56" height="7" rx="2" fill="url(#kg)" stroke="#7a4b00" stroke-width="2"/><circle cx="32" cy="24" r="4" fill="#e0304a"/><circle cx="18" cy="31" r="3" fill="#41c6f0"/><circle cx="46" cy="31" r="3" fill="#6fe39a"/></svg>`;
 
 /* ---------- pixel art + stage decorations ---------- */
 const PAL = { K: '#262636', G: '#8d8f9c', L: '#b9bbc8', W: '#f6f6f6', P: '#f29bb0', E: '#15151f', R: '#c8102e', r: '#8a0b1f', Y: '#ffd23f', y: '#c9910a', B: '#2f6fe0', b: '#1d48a8', N: '#fff3c4' };
@@ -991,16 +1015,19 @@ function host() {
 
   function renderPodium() {
     const sorted = [...players].sort((a, b) => (b.score || 0) - (a.score || 0));
+    const last = sorted.length >= 4 ? sorted[sorted.length - 1] : null;
     const col3 = (p, place) => p ? `<div class="pcol p${place}">
-        <div class="dancer" style="--c:${pcolor(p.name)}"><div class="arm l"></div><div class="arm r"></div><div class="leg l"></div><div class="leg r"></div><div class="torso"></div><div class="lei"></div><div class="head">${av(p.personId)}</div></div>
+        <div class="dancer" style="--c:${pcolor(p.name)}"><div class="arm l"></div><div class="arm r"></div><div class="leg l"></div><div class="leg r"></div><div class="torso"></div><div class="lei"></div><div class="head">${avFull(p.personId)}</div>${place === 1 ? CROWN : ''}</div>
         <div class="pname">${esc(p.name)}</div><div class="pscore">${p.score || 0} נק׳</div>
         <div class="pblock">${place}</div></div>` : '';
     app.innerHTML = `<div id="hroot">${ctrl(`<button class="btn sm ghost" id="back">↩ ללובי</button>`)}
       <div class="h-head">${marquee('mini')}</div>
-      <div class="others">${sorted.slice(3).map((p, i) => `<span class="chip">${i + 4}. ${av(p.personId)}${esc(p.name)} · ${p.score || 0}</span>`).join('')}</div>
+      <div class="others">${sorted.slice(3, last ? -1 : undefined).map((p, i) => `<span class="chip">${i + 4}. ${av(p.personId)}${esc(p.name)} · ${p.score || 0}</span>`).join('')}</div>
       <div class="podium">${col3(sorted[1], 2)}${col3(sorted[0], 1)}${col3(sorted[2], 3)}</div>
       ${hostFig('side', 'מזל טוב!! 🎉')}${catFig('dance', false)}
-      <div class="podium-men">${menorahSVG(8)}</div></div>`;
+      ${last ? `<div class="loser"><div class="cloud">${[1.4, 3, 4.6].map((x, i) => `<i style="left:${x}vw;animation-delay:${i * .23}s"></i>`).join('')}</div>
+        <div class="dancer" style="--c:#9aa3b8"><div class="arm l"></div><div class="arm r"></div><div class="leg l"></div><div class="leg r"></div><div class="torso"></div><div class="head">${avFull(last.personId)}</div><i class="tear"></i></div>
+        <div class="lplate">😢 מקום אחרון<b>${esc(last.name)}</b>${last.score || 0} נק׳</div></div>` : ''}</div>`;
     confirmBtn($('#back'), () => updateDoc(gref, { phase: 'lobby', round: -1 }));
     const cf = document.createElement('div'); cf.className = 'confetti';
     const cols = ['#ffd45c', '#ff5470', '#41c6f0', '#fff', '#c58cff'];
