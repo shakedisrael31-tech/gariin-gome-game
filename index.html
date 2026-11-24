@@ -157,6 +157,7 @@ button.chip{color:#fff;cursor:pointer;font-size:15px}
 .catfig .cat{width:7vw;height:auto;filter:drop-shadow(0 .4vw .4vw #0008)}
 .catfig .catsign{font-size:1vw}
 .catfig.lob{left:30vw;bottom:1vh}
+.catfig.tr{right:8.5vw;bottom:1vh;left:auto}
 .catfig.peek{left:-1vw;top:-4.6vw}
 .catfig.peek .cat{width:5vw}
 .catfig.dance{left:31vw;bottom:2vh;animation:catd .45s ease-in-out infinite alternate}
@@ -220,13 +221,13 @@ button.chip{color:#fff;cursor:pointer;font-size:15px}
 .h-share{font-size:1.7vw;padding:.7vw 1.2vw;border-radius:1vw;background:#070e30d9;border:.15vw solid #ffd45c77;animation:fadeUp .4s both}
 
 /* titles */
-.titles{position:absolute;top:24vh;left:9vw;right:9vw;display:grid;grid-template-columns:repeat(4,1fr);gap:1.6vw}
+.titles{position:absolute;top:23vh;left:25vw;right:8vw;bottom:3vh;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:min-content;gap:1.1vw;align-content:start}
 .titles-h{position:absolute;top:15.5vh;left:0;right:0;text-align:center;z-index:3}
-.tcard{text-align:center;padding:1.2vw .8vw;animation:pop .6s both}
-.tcard .e{font-size:3.4vw;line-height:1}
-.tcard .t{font-family:'Suez One',Rubik,serif;font-size:1.7vw;margin:.4vw 0}
-.tcard .w{display:flex;align-items:center;justify-content:center;gap:.5vw;font-size:1.7vw;font-weight:900}
-.tcard .w .dot{width:3vw;height:3vw;border-radius:.5vw;font-size:1.4vw;border:.15vw solid #8a5a00}
+.tcard{text-align:center;padding:.7vw .6vw;animation:pop .6s both}
+.tcard .e{font-size:2.4vw;line-height:1}
+.tcard .t{font-family:'Suez One',Rubik,serif;font-size:1.5vw;margin:.2vw 0}
+.tcard .w{display:flex;align-items:center;justify-content:center;gap:.5vw;font-size:1.5vw;font-weight:900}
+.tcard .w .dot{width:2.6vw;height:2.6vw;border-radius:.5vw;font-size:1.4vw;border:.15vw solid #8a5a00}
 .tcard .s{font-size:1.05vw;opacity:.8;margin-top:.4vw}
 
 /* podium */
@@ -908,7 +909,7 @@ function host() {
       <div class="h-head">${marquee('mini')}</div>
       <div class="titles-h"><div class="ribbon" style="font-size:2.4vw">🏅 התארים של הערב</div></div>
       <div class="titles" id="tl"></div>
-      ${hostFig('side', 'והתארים הולכים ל…')}${catFig('lob')}</div>`;
+      ${hostFig('side', 'והתארים הולכים ל…')}${catFig('tr')}</div>`;
     $('#nxt').onclick = next;
     const [hs, ans] = await Promise.all([getDocs(col('history')), getDocs(col('answers'))]).then(r => r.map(s => s.docs.map(d => d.data())));
     const per = {}, wrongVotes = {};
