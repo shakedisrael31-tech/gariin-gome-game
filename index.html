@@ -167,7 +167,7 @@ button.chip{color:#fff;cursor:pointer;font-size:15px}
 .catfig.peek{left:-1vw;top:-5.6vw}
 .catfig.peek .cat{width:5vw}
 .lucky{position:relative;width:7vw;aspect-ratio:411/524;filter:drop-shadow(0 .5vw .6vw #000a)}
-.lucky img{position:absolute;inset:0;width:100%;height:100%}
+.lucky img{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
 .lucky .arm{transform-origin:79% 60%;animation:lwave .55s ease-in-out infinite alternate}
 @keyframes lwave{from{transform:rotate(-9deg)}to{transform:rotate(7deg)}}
 .catfig.peek .lucky{width:4.6vw}
@@ -969,7 +969,7 @@ function host() {
 
   const ctrl = extra => `<div class="h-ctrl"><button class="btn sm ghost" id="mus">${musicOn ? '🔊' : '🔇'} מוזיקה</button>${(state.order || []).length && ['question', 'reveal'].includes(state.phase) ? `<span class="chip">תמונה ${state.round + 1} / ${state.order.length}</span>` : ''}${extra}</div>`;
   const hostFig = (cls, bubble = '') => `<div class="hostfig ${cls}"><div class="bubble" id="bub" ${bubble ? '' : 'hidden'}>${esc(bubble)}</div><img src="assets/host.webp" alt=""></div>`;
-  const catFig = (cls, say = '') => `<div class="catfig ${cls}">${say ? `<div class="bubble catb">${esc(say)}</div>` : ''}<div class="lucky"><img src="assets/luckycat-body.webp" alt=""><img class="arm" src="assets/luckycat-arm.webp" alt=""></div></div>`;
+  const catFig = (cls, say = '') => `<div class="catfig ${cls}">${say ? `<div class="bubble catb">${esc(say)}</div>` : ''}<div class="lucky"><img src="assets/luckycat-body.png" alt=""><img class="arm" src="assets/luckycat-arm.png" alt=""></div></div>`;
   const progress = () => { const t = (state.order || []).length; return t ? Math.min(8, Math.ceil(8 * (state.round + 1) / t)) : 0; };
   const setBubble = txt => { const b = $('#bub'); if (!b) return; if (!txt) { b.hidden = true; return; } if (b.textContent !== txt || b.hidden) { b.textContent = txt; b.hidden = false; } };
 
