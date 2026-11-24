@@ -543,6 +543,7 @@ function registerUI(el, people, onDone) {
 
 /* ---------- music on the big screen (YouTube, automatic) ---------- */
 const SONGS = { lobby: 'pALF48lFfkU', podium: 'aii3fDdZnrM' };
+const SONG_START = { lobby: 0, podium: 18 }; // seconds
 let musicOn = true, unlocked = false, ytP = null, ytReady = null, curSong = null;
 function ensurePlayer() {
   if (ytReady) return ytReady;
@@ -553,7 +554,7 @@ function ensurePlayer() {
       ytP = new YT.Player('ytp', {
         width: '100%', height: '100%',
         playerVars: { autoplay: 1, controls: 0, rel: 0, playsinline: 1, modestbranding: 1 },
-        events: { onReady: () => res(ytP), onStateChange: e => { if (e.data === 0) { ytP.seekTo(0); ytP.playVideo(); } }, onError: e => console.warn('YouTube error', e.data) }
+        events: { onReady: () => res(ytP), onStateChange: e => { if (e.data === 0) { ytP.seekTo(SONG_START[curSong] || 0); ytP.playVideo(); } }, onError: e => console.warn('YouTube error', e.data) }
       });
     };
     if (window.YT && YT.Player) make();
@@ -568,7 +569,7 @@ async function syncMusic(phase) {
   if (want === curSong) return;
   curSong = want;
   if (!want) { try { p.pauseVideo(); } catch (e) {} return; }
-  p.loadVideoById(SONGS[want]); p.setVolume(80); p.unMute();
+  p.loadVideoById({ videoId: SONGS[want], startSeconds: SONG_START[want] || 0 }); p.setVolume(80); p.unMute();
 }
 
 /* ================= router ================= */
