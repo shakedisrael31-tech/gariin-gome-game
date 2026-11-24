@@ -100,6 +100,8 @@ button.chip{color:#fff;cursor:pointer;font-size:15px}
 
 /* menorah */
 .menorah .flames{filter:drop-shadow(0 0 3px #ffb300)}
+.maneki .paw{transform-box:fill-box;transform-origin:50% 100%;animation:mwave .45s ease-in-out infinite alternate}
+@keyframes mwave{from{transform:rotate(-22deg)}to{transform:rotate(16deg)}}
 .menorah .fl{transform-box:fill-box;transform-origin:50% 100%;animation:flick2 .16s infinite alternate}
 @keyframes flick2{to{transform:scaleY(1.18) scaleX(.86)}}
 
@@ -404,6 +406,33 @@ const DREIDEL = [
   '..KBBBBK..',
   '...KBBK...',
   '....KK....'];
+// lucky waving cat (maneki-neko), pixel art with an animated paw
+const MANEKI = [
+  '...K.........K....',
+  '..KPK.......KPK...',
+  '..KPWK.....KWPK...',
+  '.KWWWWKKKKKWWWWK..',
+  '.KWWWWWWWWWWWWWK..',
+  'KWWEEWWWWWWEEWWWK.',
+  'KWWWWWWWWWWWWWWWK.',
+  'KWPWWWWKKKWWWWPWK.',
+  '.KWWWWWWWWWWWWWK..',
+  '..KRRRRRYYRRRRK...',
+  '.KWWWWWWYYWWWWWWK.',
+  'KWWWWWWWWWWWWWWWK.',
+  'KWWKYYYYYYKWWWWWK.',
+  'KWWKYyYYyYKWWWWWK.',
+  'KWWKYYYYYYKWWWWWK.',
+  'KWWWKKKKKKWWWWWWK.',
+  'KWWWWWWWWWWWWWWWK.',
+  '.KRRRRRRRRRRRRRK..',
+  '.KRRRRRRRRRRRRRK..',
+  '..KKKKKKKKKKKKK...'];
+const MANEKI_PAW = ['.KKK.', 'KWWWK', 'KWPWK', 'KWWWK', '.KWK.', '.KWK.', '.KWK.'];
+function pixRects(rows, ox = 0, oy = 0) {
+  let r = ''; rows.forEach((row, y) => [...row].forEach((ch, x) => { if (PAL[ch]) r += `<rect x="${x + ox}" y="${y + oy}" width="1.04" height="1.04" fill="${PAL[ch]}"/>`; })); return r;
+}
+const manekiSVG = (cls = '') => `<svg class="maneki ${cls}" viewBox="-1 -6 22 26" shape-rendering="crispEdges">${pixRects(MANEKI)}<g class="paw">${pixRects(MANEKI_PAW, 15, -5)}</g></svg>`;
 function pixelSVG(rows, cls = '') {
   const h = rows.length, w = rows[0].length; let r = '';
   rows.forEach((row, y) => [...row].forEach((ch, x) => { if (PAL[ch]) r += `<rect x="${x}" y="${y}" width="1.04" height="1.04" fill="${PAL[ch]}"/>`; }));
@@ -933,7 +962,7 @@ function host() {
 
   const ctrl = extra => `<div class="h-ctrl"><button class="btn sm ghost" id="mus">${musicOn ? '🔊' : '🔇'} מוזיקה</button>${(state.order || []).length && ['question', 'reveal'].includes(state.phase) ? `<span class="chip">תמונה ${state.round + 1} / ${state.order.length}</span>` : ''}${extra}</div>`;
   const hostFig = (cls, bubble = '') => `<div class="hostfig ${cls}"><div class="bubble" id="bub" ${bubble ? '' : 'hidden'}>${esc(bubble)}</div><img src="assets/host.webp" alt=""></div>`;
-  const catFig = (cls, sign = true) => `<div class="catfig ${cls}">${sign ? '<div class="catsign">אוחנה הוא חתול</div>' : ''}${pixelSVG(CAT, 'cat')}</div>`;
+  const catFig = (cls, sign = true) => `<div class="catfig ${cls}">${sign ? '<div class="catsign">אוחנה הוא חתול</div>' : ''}${manekiSVG('cat')}</div>`;
   const progress = () => { const t = (state.order || []).length; return t ? Math.min(8, Math.ceil(8 * (state.round + 1) / t)) : 0; };
   const setBubble = txt => { const b = $('#bub'); if (!b) return; if (!txt) { b.hidden = true; return; } if (b.textContent !== txt || b.hidden) { b.textContent = txt; b.hidden = false; } };
 
