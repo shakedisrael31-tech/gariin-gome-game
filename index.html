@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>מי בתמונה? 📸</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg1:#14102b; --bg2:#2a1450; --card:#ffffff14; --line:#ffffff22; --txt:#fff; --mut:#c9c3e6;
+  --o0:#ff4d6d; --o1:#4cc9f0; --o2:#ffd60a; --o3:#80ed99; --o4:#c77dff; --ok:#3ddc84;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;font-family:Rubik,system-ui,sans-serif;color:var(--txt);
+  background:radial-gradient(circle at 20% 0%,#3b1d73 0,transparent 50%),radial-gradient(circle at 90% 100%,#5c1a4f 0,transparent 45%),linear-gradient(160deg,var(--bg1),var(--bg2));background-attachment:fixed}
+a{color:inherit}
+button,input,select,textarea{font-family:inherit;font-size:16px}
+.screen{max-width:560px;margin:0 auto;padding:22px 18px 60px;position:relative}
+.center{text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:12vh}
+.logo{font-size:72px;animation:bob 2.4s ease-in-out infinite}
+h1{margin:6px 0;font-weight:900;font-size:32px}
+h2{font-size:20px;margin:22px 0 10px}
+.sub{color:var(--mut);margin:0 0 10px;line-height:1.5}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:16px;padding:13px 20px;font-weight:700;
+  background:linear-gradient(135deg,#ff4d6d,#ff8e3c);color:#fff;text-decoration:none;cursor:pointer;box-shadow:0 6px 20px #0005;transition:transform .1s}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.big{width:100%;padding:18px;font-size:19px}
+.btn.alt{background:linear-gradient(135deg,#4361ee,#4cc9f0)}
+.btn.ghost{background:var(--card);box-shadow:none;border:1px solid var(--line)}
+.btn.sm{padding:9px 14px;font-size:15px;border-radius:12px}
+.btn.warn{background:#d62828}
+.small-links{margin-top:30px;color:var(--mut);font-size:14px}
+.back{position:absolute;top:18px;left:18px;text-decoration:none;font-size:24px;opacity:.7}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;margin:12px 0;display:flex;flex-direction:column;gap:10px}
+label{font-weight:700}
+input,select,textarea{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:#0003;color:#fff;outline:none}
+select option{color:#000}
+.row{display:flex;gap:8px;align-items:center}
+.row input{flex:1}
+.msg{min-height:1.2em;color:var(--mut);font-size:14px}
+.thumbs{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.thumb{position:relative;border-radius:14px;overflow:hidden;background:#0004;aspect-ratio:1}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .cap{position:absolute;bottom:0;left:0;right:0;padding:6px 8px;font-size:12px;background:linear-gradient(transparent,#000c)}
+.thumb .x{position:absolute;top:6px;left:6px;border:0;border-radius:10px;background:#000a;color:#fff;padding:5px 8px;cursor:pointer}
+.filebtn{display:flex;align-items:center;justify-content:center;padding:16px;border:2px dashed #ffffff55;border-radius:16px;cursor:pointer;font-size:17px}
+.prev{width:100%;max-height:320px;object-fit:contain;border-radius:12px;background:#0004}
+.done{text-align:center;font-size:20px;font-weight:700;padding:20px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:var(--card);border:1px solid var(--line);margin:3px;font-weight:500}
+.dot{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#1a1033}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-10px) rotate(4deg)}}
+@keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+@keyframes fadeUp{from{transform:translateY(20px);opacity:0}to{transform:none;opacity:1}}
+
+/* ---------- phone ---------- */
+.pbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;color:var(--mut)}
+.pbar b{color:#fff}
+.opts{display:flex;flex-direction:column;gap:12px}
+.opt{border:0;border-radius:18px;padding:20px;font-size:21px;font-weight:800;color:#1a1033;cursor:pointer;display:flex;align-items:center;gap:12px;text-align:right;box-shadow:0 6px 0 #0004;animation:pop .35s both}
+.opt .sh{font-size:24px;width:30px;text-align:center}
+.opt:active{transform:translateY(3px);box-shadow:0 3px 0 #0004}
+.opt.dim{opacity:.3}
+.big-emoji{font-size:84px;margin:10px 0;animation:pop .5s both}
+.note{background:#ffd60a22;border:1px solid #ffd60a66;border-radius:14px;padding:12px;margin-bottom:12px;text-align:center;line-height:1.5}
+.waiting{font-size:20px;line-height:1.6;color:var(--mut)}
+
+/* ---------- host ---------- */
+body.hostmode .screen{max-width:none;padding:2.2vw 3vw}
+.h-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5vw}
+.h-title{font-size:2.4vw;font-weight:900}
+.h-ctr{display:flex;gap:10px;align-items:center}
+.h-ctr .btn{font-size:1.1vw}
+.h-grid{display:grid;grid-template-columns:1.45fr 1fr;gap:2.5vw;align-items:start}
+.h-photo{position:relative;background:#0005;border-radius:2vw;overflow:hidden;height:78vh;display:flex;align-items:center;justify-content:center;box-shadow:0 20px 60px #0007}
+.h-photo img{max-width:100%;max-height:100%;object-fit:contain;animation:pop .5s both}
+.h-cap{position:absolute;bottom:1.5vw;right:1.5vw;left:1.5vw;background:#000b;border-radius:1.2vw;padding:1vw 1.5vw;font-size:1.8vw;animation:fadeUp .5s .3s both}
+.h-opts{display:flex;flex-direction:column;gap:1vw}
+.h-opt{position:relative;border-radius:1.4vw;padding:1.3vw 1.6vw;font-size:2.4vw;font-weight:800;color:#1a1033;display:flex;align-items:center;gap:1vw;overflow:hidden;animation:pop .4s both;transition:opacity .4s,transform .4s}
+.h-opt .sh{width:2.6vw;text-align:center}
+.h-opt .vb{position:absolute;inset:0 auto 0 0;background:#0002;transition:width .8s}
+.h-opt .vc{margin-inline-start:auto;font-size:1.8vw;position:relative}
+.h-opt span{position:relative}
+.h-opt.wrong{opacity:.32;transform:scale(.96)}
+.h-opt.right{outline:.4vw solid #fff;transform:scale(1.04);box-shadow:0 0 3vw #fff8}
+.tbar{height:1.1vw;border-radius:1vw;background:#ffffff22;overflow:hidden;margin:1vw 0}
+.tbar i{display:block;height:100%;background:linear-gradient(90deg,#ffd60a,#ff4d6d);transition:width .2s linear}
+.h-info{font-size:1.6vw;color:var(--mut);margin-top:1vw;line-height:1.6}
+.h-info b{color:#fff}
+.h-owner{font-size:3vw;font-weight:900;margin:.5vw 0 1vw;animation:pop .5s both}
+.h-share{font-size:2vw;padding:1vw 1.4vw;border-radius:1.2vw;background:var(--card);border:1px solid var(--line);margin-top:1vw;animation:fadeUp .4s both}
+.lobby{display:grid;grid-template-columns:auto 1fr;gap:4vw;align-items:center;margin-top:3vw}
+.lobby img{width:24vw;height:24vw;border-radius:2vw;background:#fff;padding:1vw}
+.lobby .url{font-size:1.6vw;direction:ltr;color:var(--mut);margin-top:1vw;text-align:center}
+.lobby h1{font-size:5vw}
+.lobby .chips{margin:2vw 0;font-size:1.6vw}
+.lobby .chip{font-size:1.6vw}
+.stat{font-size:1.6vw;color:var(--mut);margin-bottom:2vw}
+.titles{display:grid;grid-template-columns:repeat(3,1fr);gap:2vw;margin-top:2vw}
+.tcard{background:var(--card);border:1px solid var(--line);border-radius:2vw;padding:2vw;text-align:center;animation:pop .6s both}
+.tcard .e{font-size:5vw}
+.tcard .t{font-size:2vw;font-weight:900;margin:.6vw 0}
+.tcard .n{font-size:2.6vw;font-weight:800;color:#ffd60a}
+.tcard .s{font-size:1.3vw;color:var(--mut);margin-top:.5vw}
+
+/* podium */
+.podium{display:flex;direction:ltr;justify-content:center;align-items:flex-end;gap:2vw;height:62vh;margin-top:2vh}
+.pcol{display:flex;flex-direction:column;align-items:center;width:18vw}
+.pblock{width:100%;border-radius:1.4vw 1.4vw 0 0;display:flex;align-items:flex-start;justify-content:center;font-size:5vw;font-weight:900;padding-top:1vw;color:#1a1033;animation:rise 1s both}
+.pcol.p1 .pblock{height:26vh;background:linear-gradient(#ffe066,#ffb703)}
+.pcol.p2 .pblock{height:18vh;background:linear-gradient(#e9ecef,#adb5bd);animation-delay:.3s}
+.pcol.p3 .pblock{height:12vh;background:linear-gradient(#f4a261,#bc6c25);animation-delay:.6s}
+@keyframes rise{from{transform:scaleY(0);transform-origin:bottom}to{transform:scaleY(1);transform-origin:bottom}}
+.pname{font-size:2.2vw;font-weight:900;margin-top:.6vw;direction:rtl}
+.pscore{font-size:1.5vw;color:var(--mut);margin-bottom:.8vw}
+.dancer{position:relative;width:9vw;height:15vw;animation:dance 0.6s ease-in-out infinite alternate}
+.p2 .dancer{animation:dance2 .7s ease-in-out infinite alternate}
+.p3 .dancer{animation:dance3 .5s ease-in-out infinite alternate}
+.dancer .head{position:absolute;top:0;left:50%;width:6vw;height:6vw;margin-left:-3vw;border-radius:50%;background:var(--c);display:flex;align-items:center;justify-content:center;font-size:2.8vw;font-weight:900;color:#1a1033;z-index:2;box-shadow:inset -.5vw -.5vw 0 #0002}
+.dancer .eyes{position:absolute;top:2.2vw;left:50%;width:2.6vw;margin-left:-1.3vw;display:flex;justify-content:space-between;z-index:3}
+.dancer .eyes i{width:.6vw;height:.6vw;border-radius:50%;background:#1a1033}
+.dancer .torso{position:absolute;top:5.6vw;left:50%;width:4.6vw;height:5vw;margin-left:-2.3vw;border-radius:2vw 2vw 1vw 1vw;background:var(--c);filter:brightness(.85)}
+.dancer .arm{position:absolute;top:6vw;width:1.2vw;height:4.6vw;border-radius:1vw;background:var(--c);filter:brightness(.75);transform-origin:top center}
+.dancer .arm.l{left:1.4vw;animation:armL .3s ease-in-out infinite alternate}
+.dancer .arm.r{right:1.4vw;animation:armR .3s ease-in-out infinite alternate}
+.dancer .leg{position:absolute;top:10.3vw;width:1.3vw;height:4.4vw;border-radius:1vw;background:#1a1033;transform-origin:top center}
+.dancer .leg.l{left:3vw;animation:legL .6s ease-in-out infinite alternate}
+.dancer .leg.r{right:3vw;animation:legR .6s ease-in-out infinite alternate}
+@keyframes dance{from{transform:translateY(0) rotate(-8deg)}to{transform:translateY(-2vw) rotate(8deg)}}
+@keyframes dance2{from{transform:translateX(-1vw) rotate(6deg)}to{transform:translateX(1vw) translateY(-1vw) rotate(-6deg)}}
+@keyframes dance3{from{transform:scaleY(1)}to{transform:scaleY(.9) translateY(1vw)}}
+@keyframes armL{from{transform:rotate(30deg)}to{transform:rotate(160deg)}}
+@keyframes armR{from{transform:rotate(-160deg)}to{transform:rotate(-30deg)}}
+@keyframes legL{from{transform:rotate(10deg)}to{transform:rotate(-20deg)}}
+@keyframes legR{from{transform:rotate(-10deg)}to{transform:rotate(20deg)}}
+.others{display:flex;flex-wrap:wrap;justify-content:center;gap:.6vw;margin-top:2vh;font-size:1.4vw}
+.others .chip{font-size:1.4vw}
+.confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}
+.confetti i{position:absolute;top:-3vh;width:1vw;height:1.6vw;border-radius:2px;animation:fall linear infinite}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+
+/* admin */
+.adm{max-width:1100px}
+.agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.aitem{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.aitem img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#0004}
+.aitem .meta{padding:8px;font-size:13px;display:flex;flex-direction:column;gap:6px}
+.aitem .meta .btns{display:flex;gap:6px;flex-wrap:wrap}
+.badge{display:inline-block;background:#3ddc8433;color:#9ff0c0;border-radius:8px;padding:2px 8px;font-size:12px}
+.modal{position:fixed;inset:0;background:#000d;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:12px}
+.modal canvas{max-width:92vw;max-height:72vh;border-radius:10px;cursor:crosshair;touch-action:none;background:#000}
+.modal .help{color:var(--mut);font-size:14px;text-align:center;max-width:640px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, onSnapshot, query, where, getDocs, writeBatch, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCzh-n0PQMLGuPA5ViZDrwFKuLidDrecG0",
+  authDomain: "friends-photo-game.firebaseapp.com",
+  projectId: "friends-photo-game",
+  storageBucket: "friends-photo-game.firebasestorage.app",
+  messagingSenderId: "9323915169",
+  appId: "1:9323915169:web:c44fe2d661490cf3900de0"
+};
+const db = getFirestore(initializeApp(firebaseConfig));
+
+/* ================= helpers ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const app = $('#app');
+const G = 'main';
+const gref = doc(db, 'games', G);
+const col = n => collection(db, 'games', G, n);
+const dref = (n, id) => doc(db, 'games', G, n, id);
+const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-5);
+const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const OPT_COLORS = ['var(--o0)', 'var(--o1)', 'var(--o2)', 'var(--o3)', 'var(--o4)'];
+const OPT_SHAPES = ['▲', '◆', '●', '■', '★'];
+const hue = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+const pcolor = s => `hsl(${hue(s)} 85% 68%)`;
+const dot = name => `<span class="dot" style="background:${pcolor(name)}">${esc((name || '?').trim()[0] || '?')}</span>`;
+const GAME_URL = location.origin + location.pathname;
+
+let unsubs = [], timers = [];
+function cleanup() { unsubs.forEach(u => { try { u(); } catch (e) {} }); unsubs = []; timers.forEach(clearInterval); timers = []; document.onkeydown = null; document.body.classList.remove('hostmode'); $('.confetti')?.remove(); }
+const listen = (ref, cb) => unsubs.push(onSnapshot(ref, cb, err => console.error(err)));
+
+function watchPeople(cb) {
+  listen(col('people'), s => cb(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.name.localeCompare(b.name, 'he'))));
+}
+
+const imgCache = new Map();
+function getDisplay(id) {
+  if (!imgCache.has(id)) imgCache.set(id, getDoc(dref('photoData', id)).then(s => s.exists() ? s.data().display : '').catch(() => ''));
+  return imgCache.get(id);
+}
+
+function confirmBtn(btn, fn) {
+  let armed = false, t; const orig = btn.innerHTML;
+  btn.addEventListener('click', () => {
+    if (!armed) { armed = true; btn.innerHTML = 'בטוח? לחץ שוב'; btn.classList.add('warn'); t = setTimeout(() => { armed = false; btn.innerHTML = orig; btn.classList.remove('warn'); }, 3000); return; }
+    clearTimeout(t); armed = false; btn.innerHTML = orig; btn.classList.remove('warn'); fn();
+  });
+}
+
+async function deleteAll(name) {
+  const s = await getDocs(col(name)); let b = writeBatch(db), n = 0;
+  for (const d of s.docs) { b.delete(d.ref); if (++n % 400 === 0) { await b.commit(); b = writeBatch(db); } }
+  await b.commit();
+}
+
+// resize to JPEG data URL that fits comfortably in a Firestore document
+function canvasToJpeg(c, limit = 400000) {
+  let q = 0.85, out = c.toDataURL('image/jpeg', q);
+  while (out.length > limit) {
+    if (q > 0.55) q -= 0.1;
+    else { const n = document.createElement('canvas'); n.width = Math.round(c.width * 0.8); n.height = Math.round(c.height * 0.8); n.getContext('2d').drawImage(c, 0, 0, n.width, n.height); c = n; }
+    out = c.toDataURL('image/jpeg', q);
+  }
+  return out;
+}
+function loadImg(src) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('img')); i.src = src; }); }
+async function fileToJpeg(file, max = 1280) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await loadImg(url);
+    let w = img.naturalWidth, h = img.naturalHeight; const s = Math.min(1, max / Math.max(w, h));
+    w = Math.round(w * s); h = Math.round(h * s);
+    const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h);
+    return canvasToJpeg(c);
+  } finally { URL.revokeObjectURL(url); }
+}
+
+/* ================= router ================= */
+function route() {
+  cleanup();
+  const r = location.hash.replace('#', '') || 'home';
+  ({ home, upload, play, host, admin }[r] || home)();
+}
+window.addEventListener('hashchange', route);
+
+/* ================= home ================= */
+function home() {
+  app.innerHTML = `<div class="screen center">
+    <div class="logo">📸</div>
+    <h1>מי בתמונה?</h1>
+    <p class="sub">משחק התמונות של המפגש</p>
+    <a class="btn big" href="#upload">📤 העלאת תמונות לפני המפגש</a>
+    <a class="btn big alt" href="#play">🎮 הצטרפות למשחק</a>
+    <div class="small-links"><a href="#host">מסך גדול</a> · <a href="#admin">ניהול</a></div>
+  </div>`;
+}
+
+/* ================= upload ================= */
+function upload() {
+  let me = localStorage.getItem('pg_person') || '', myPhotos = [], unsubMine = null, processed = null;
+  app.innerHTML = `<div class="screen"><a class="back" href="#">←</a>
+    <h1>📤 העלאת תמונות</h1>
+    <p class="sub">4 תמונות של דברים שקורים לך בחיים עכשיו: משמעותיות, מרגשות, מצחיקות.<br>אל תספרו לאף אחד מה שלחתם 🤫</p>
+    <div class="card">
+      <label>מי את/ה?</label>
+      <select id="who"><option value="">בחרו שם…</option></select>
+      <div class="row"><input id="newName" placeholder="לא ברשימה? כתבו את השם"><button class="btn sm" id="addName">הוספה</button></div>
+    </div>
+    <div id="slots"></div></div>`;
+  const sel = $('#who');
+  watchPeople(p => {
+    sel.innerHTML = '<option value="">בחרו שם…</option>' + p.map(x => `<option value="${x.id}" ${x.id === me ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
+  });
+  function setMe(id) { me = id; localStorage.setItem('pg_person', id); watchMine(); }
+  sel.onchange = () => setMe(sel.value);
+  $('#addName').onclick = async () => {
+    const name = $('#newName').value.trim(); if (!name) return;
+    const s = await getDocs(col('people'));
+    const ex = s.docs.find(d => d.data().name.trim() === name);
+    const id = ex ? ex.id : uid();
+    if (!ex) await setDoc(dref('people', id), { name, createdAt: Date.now() });
+    $('#newName').value = ''; setMe(id); setTimeout(() => { sel.value = id; }, 300);
+  };
+  function watchMine() {
+    if (unsubMine) unsubMine();
+    unsubMine = null;
+    if (!me) { myPhotos = []; renderSlots(); return; }
+    unsubMine = onSnapshot(query(col('photos'), where('ownerId', '==', me)), s => {
+      myPhotos = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+      renderSlots();
+    });
+  }
+  unsubs.push(() => unsubMine && unsubMine());
+  function renderSlots() {
+    const el = $('#slots'); processed = null;
+    if (!me) { el.innerHTML = ''; return; }
+    el.innerHTML = `<h2>התמונות שלך (${myPhotos.length}/4)</h2>
+      <div class="thumbs">${myPhotos.map(p => `<div class="thumb"><img data-pid="${p.id}" alt=""><div class="cap">${esc(p.caption || '')}</div><button class="x" data-del="${p.id}">🗑</button></div>`).join('')}</div>
+      ${myPhotos.length < 4 ? `<div class="card">
+        <label class="filebtn">📷 בחירת תמונה<input type="file" accept="image/*" id="file" hidden></label>
+        <img id="prev" class="prev" hidden alt="">
+        <input id="cap" maxlength="100" placeholder="משפט קצר על התמונה (לא חובה, יופיע רק אחרי הניחוש)">
+        <button class="btn" id="send" disabled>העלאה</button>
+        <div id="msg" class="msg"></div></div>` : `<div class="done">✅ סיימת! נתראה במפגש 🎉</div>`}
+      <p class="sub" style="font-size:14px">אם רואים בתמונה את הפנים שלך, נטשטש אותן לפני המשחק.</p>`;
+    $$('img[data-pid]', el).forEach(async im => { im.src = await getDisplay(im.dataset.pid); });
+    $$('[data-del]', el).forEach(b => confirmBtn(b, async () => {
+      const id = b.dataset.del; await deleteDoc(dref('photos', id)); await deleteDoc(dref('photoData', id)); imgCache.delete(id);
+    }));
+    const file = $('#file'); if (!file) return;
+    file.onchange = async () => {
+      const f = file.files[0]; if (!f) return;
+      $('#msg').textContent = 'מכין את התמונה…';
+      try { processed = await fileToJpeg(f); $('#prev').src = processed; $('#prev').hidden = false; $('#send').disabled = false; $('#msg').textContent = ''; }
+      catch (e) { $('#msg').textContent = 'לא הצלחתי לקרוא את התמונה. נסו תמונה אחרת (JPG/PNG).'; }
+    };
+    $('#send').onclick = async () => {
+      if (!processed || myPhotos.length >= 4) return;
+      $('#send').disabled = true; $('#msg').textContent = 'מעלה…';
+      try {
+        const id = uid();
+        await setDoc(dref('photoData', id), { orig: processed, display: processed });
+        await setDoc(dref('photos', id), { ownerId: me, caption: $('#cap').value.trim(), createdAt: Date.now(), blurred: false });
+      } catch (e) { console.error(e); $('#msg').textContent = 'ההעלאה נכשלה, נסו שוב.'; $('#send').disabled = false; }
+    };
+  }
+  watchMine();
+}
+
+/* ================= phone / play ================= */
+function play() {
+  let deviceId = localStorage.getItem('pg_device');
+  if (!deviceId) { deviceId = uid(); localStorage.setItem('pg_device', deviceId); }
+  let me = localStorage.getItem('pg_person') || '', people = [], state = null, player = undefined;
+  let seenRound = -1, seenAt = 0, myAns = null, ansRound = -1, unsubAns = null, players = [];
+  const nameOf = id => people.find(p => p.id === id)?.name || '?';
+
+  watchPeople(p => { people = p; render(); });
+  listen(gref, s => { state = s.data() || { phase: 'lobby' }; render(); });
+  listen(dref('players', deviceId), s => { player = s.exists() ? s.data() : null; render(); });
+  listen(col('players'), s => { players = s.docs.map(d => d.data()); if (state && ['titles', 'podium'].includes(state.phase)) render(); });
+  unsubs.push(() => unsubAns && unsubAns());
+
+  function watchAnswer(r) {
+    if (ansRound === r) return;
+    ansRound = r; myAns = null;
+    if (unsubAns) unsubAns();
+    unsubAns = onSnapshot(dref('answers', `${r}_${deviceId}`), s => { myAns = s.exists() ? s.data() : null; render(); });
+  }
+
+  function render() {
+    if (player === undefined || !state) { app.innerHTML = `<div class="screen center"><div class="logo">📸</div><p class="waiting">מתחבר…</p></div>`; return; }
+    if (!player) return renderJoin();
+    const top = `<div class="pbar"><span>${dot(player.name)} <b>${esc(player.name)}</b></span><span>⭐ <b>${player.score || 0}</b></span></div>`;
+    const ph = state.phase;
+    if (ph === 'question' || ph === 'reveal') watchAnswer(state.round);
+    if (ph === 'question') {
+      if (seenRound !== state.round) { seenRound = state.round; seenAt = performance.now(); }
+      const isOwner = state.ownerId === player.personId;
+      if (myAns) { app.innerHTML = `<div class="screen">${top}<div class="center" style="padding-top:8vh"><div class="big-emoji">⏳</div><p class="waiting">ענית: <b>${esc(nameOf(myAns.choice))}</b><br>מחכים לכולם…</p></div></div>`; return; }
+      app.innerHTML = `<div class="screen">${top}
+        ${isOwner ? `<div class="note">🤫 <b>זו התמונה שלך!</b><br>תבחר/י מישהו אחר כדי להטעות (על התמונה שלך אין נקודות)</div>` : `<p class="sub" style="text-align:center;font-size:18px">של מי התמונה? 👀</p>`}
+        <div class="opts">${(state.options || []).map((id, i) => `<button class="opt" data-id="${id}" style="background:${OPT_COLORS[i]};animation-delay:${i * 60}ms"><span class="sh">${OPT_SHAPES[i]}</span>${esc(nameOf(id))}</button>`).join('')}</div></div>`;
+      $$('.opt').forEach(b => b.onclick = async () => {
+        $$('.opt').forEach(x => { x.disabled = true; if (x !== b) x.classList.add('dim'); });
+        const r = state.round;
+        await setDoc(dref('answers', `${r}_${deviceId}`), { round: r, deviceId, personId: player.personId, choice: b.dataset.id, ms: Math.round(performance.now() - seenAt) });
+      });
+      return;
+    }
+    if (ph === 'reveal') {
+      const isOwner = state.ownerId === player.personId;
+      if (isOwner) {
+        const sh = state.shared;
+        app.innerHTML = `<div class="screen">${top}<div class="center" style="padding-top:5vh">
+          <div class="big-emoji">📸</div><h1>זו הייתה התמונה שלך!</h1>
+          <p class="sub">${state.correctCount || 0} מתוך ${state.voters || 0} זיהו אותך</p>
+          ${sh == null ? `<p class="waiting">רוצה לספר על התמונה?</p>
+            <button class="btn big" id="shY">🎤 בא לי לספר</button><button class="btn big ghost" id="shN">⏭ דלג</button>`
+            : `<p class="waiting">${sh ? '🎤 הבמה שלך!' : '⏭ דילגת. מחכים לתמונה הבאה'}</p>`}</div></div>`;
+        if (sh == null) { $('#shY').onclick = () => updateDoc(gref, { shared: true }); $('#shN').onclick = () => updateDoc(gref, { shared: false }); }
+        return;
+      }
+      let em, txt;
+      if (!myAns) { em = '⏰'; txt = `לא הספקת לענות<br>זו הייתה התמונה של <b>${esc(nameOf(state.ownerId))}</b>`; }
+      else if (myAns.choice === state.ownerId) { em = '🎉'; txt = `צדקת!${myAns.points != null ? `<br><b style="font-size:30px;color:#ffd60a">+${myAns.points}</b>` : ''}`; }
+      else { em = '😅'; txt = `לא הפעם…<br>זו הייתה התמונה של <b>${esc(nameOf(state.ownerId))}</b>`; }
+      app.innerHTML = `<div class="screen">${top}<div class="center" style="padding-top:8vh"><div class="big-emoji">${em}</div><p class="waiting" style="font-size:22px">${txt}</p></div></div>`;
+      return;
+    }
+    if (ph === 'titles' || ph === 'podium') {
+      const sorted = [...players].sort((a, b) => (b.score || 0) - (a.score || 0));
+      const rank = sorted.findIndex(p => p.personId === player.personId && p.name === player.name) + 1;
+      app.innerHTML = `<div class="screen">${top}<div class="center" style="padding-top:8vh"><div class="big-emoji">🏁</div><h1>המשחק נגמר!</h1>
+        <p class="waiting">סיימת במקום <b>${rank || '?'}</b> עם <b>${player.score || 0}</b> נקודות<br>תסתכלו על המסך 👀</p></div></div>`;
+      return;
+    }
+    app.innerHTML = `<div class="screen">${top}<div class="center" style="padding-top:8vh"><div class="logo">📸</div><h1>את/ה בפנים!</h1>
+      <p class="waiting">מחכים שהמשחק יתחיל…</p><button class="btn sm ghost" id="chg">זה לא אני, להחליף שם</button></div></div>`;
+    $('#chg').onclick = async () => { await deleteDoc(dref('players', deviceId)); };
+  }
+
+  function renderJoin() {
+    app.innerHTML = `<div class="screen"><a class="back" href="#">←</a><div class="center" style="padding-top:4vh">
+      <div class="logo">🎮</div><h1>הצטרפות למשחק</h1>
+      <div class="card" style="width:100%;text-align:right">
+        <label>מי את/ה?</label>
+        <select id="who"><option value="">בחרו שם…</option>${people.map(p => `<option value="${p.id}" ${p.id === me ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+        <div class="row"><input id="newName" placeholder="לא ברשימה? כתבו שם"></div>
+        <button class="btn big" id="join">יאללה 🚀</button><div class="msg" id="msg"></div>
+      </div></div></div>`;
+    $('#join').onclick = async () => {
+      let id = $('#who').value; const nn = $('#newName').value.trim();
+      if (!id && nn) {
+        const ex = people.find(p => p.name.trim() === nn);
+        id = ex ? ex.id : uid();
+        if (!ex) await setDoc(dref('people', id), { name: nn, createdAt: Date.now() });
+      }
+      if (!id) { $('#msg').textContent = 'צריך לבחור שם 🙂'; return; }
+      me = id; localStorage.setItem('pg_person', id);
+      const name = people.find(p => p.id === id)?.name || nn;
+      await setDoc(dref('players', deviceId), { personId: id, name, joinedAt: Date.now() }, { merge: true });
+    };
+  }
+  render();
+}
+
+/* ================= host / big screen ================= */
+function host() {
+  document.body.classList.add('hostmode');
+  let people = [], photos = [], players = [], state = null, answers = [], ansRound = -1, unsubAns = null;
+  let revealing = false, busy = false, lastKey = '';
+  const nameOf = id => people.find(p => p.id === id)?.name || '?';
+
+  const softForce = () => !state || state.phase === 'lobby';
+  watchPeople(p => { people = p; render(softForce()); });
+  listen(col('photos'), s => { photos = s.docs.map(d => ({ id: d.id, ...d.data() })); render(softForce()); });
+  listen(col('players'), s => { players = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); });
+  listen(gref, async s => {
+    if (!s.exists()) { await setDoc(gref, { phase: 'lobby', round: -1, duration: 20 }); return; }
+    state = s.data();
+    if ((state.phase === 'question' || state.phase === 'reveal') && ansRound !== state.round) {
+      ansRound = state.round; answers = [];
+      if (unsubAns) unsubAns();
+      unsubAns = onSnapshot(query(col('answers'), where('round', '==', state.round)), q => { answers = q.docs.map(d => d.data()); render(); });
+    }
+    render();
+  });
+  unsubs.push(() => unsubAns && unsubAns());
+
+  timers.push(setInterval(tick, 200));
+  document.onkeydown = e => { if (['Space', 'Enter', 'ArrowLeft'].includes(e.code)) { e.preventDefault(); next(); } };
+
+  function tick() {
+    if (!state || state.phase !== 'question') return;
+    const dur = (state.duration || 20) * 1000, left = Math.max(0, dur - (Date.now() - state.startedAt));
+    const bar = $('#tbar'); if (bar) bar.style.width = (left / dur * 100) + '%';
+    const t = $('#tleft'); if (t) t.textContent = Math.ceil(left / 1000);
+    const allIn = players.length > 0 && answers.length >= players.length;
+    if (left <= 0 || allIn) reveal();
+  }
+
+  async function reveal() {
+    if (revealing || !state || state.phase !== 'question') return;
+    revealing = true;
+    try {
+      const r = state.round, owner = state.ownerId, dur = (state.duration || 20) * 1000;
+      const snap = await getDocs(query(col('answers'), where('round', '==', r)));
+      const batch = writeBatch(db); const votes = {}; let correct = 0, voters = 0, ownerChoice = null;
+      for (const d of snap.docs) {
+        const a = d.data();
+        votes[a.choice] = (votes[a.choice] || 0) + 1;
+        if (a.personId === owner) { ownerChoice = a.choice; continue; }
+        voters++;
+        const ok = a.choice === owner; let pts = 0;
+        if (ok) { correct++; pts = 100 + Math.round(50 * Math.max(0, 1 - a.ms / dur)); }
+        batch.update(d.ref, { points: pts, correct: ok });
+        batch.set(dref('players', a.deviceId), { score: increment(pts), correctN: increment(ok ? 1 : 0), answeredN: increment(1), sumMs: increment(ok ? a.ms : 0) }, { merge: true });
+      }
+      batch.set(dref('history', String(r)), { round: r, photoId: state.photoId, ownerId: owner, votes, correct, voters, ownerChoice, shared: null });
+      batch.update(gref, { phase: 'reveal', votes, correctCount: correct, voters, shared: null });
+      await batch.commit();
+    } catch (e) { console.error(e); }
+    revealing = false;
+  }
+
+  function buildOrder() {
+    const byOwner = {};
+    photos.forEach(p => (byOwner[p.ownerId] = byOwner[p.ownerId] || []).push(p.id));
+    const first = [], rest = [];
+    shuffle(Object.keys(byOwner)).forEach(o => { const s = shuffle(byOwner[o]); first.push({ id: s[0], o }); s.slice(1).forEach(id => rest.push({ id, o })); });
+    // spread the rest so the same person doesn't appear twice in a row
+    let pool = shuffle(rest), out = [], last = first.length ? first[first.length - 1].o : null;
+    while (pool.length) {
+      let i = pool.findIndex(x => x.o !== last); if (i < 0) i = 0;
+      const [x] = pool.splice(i, 1); out.push(x); last = x.o;
+    }
+    return [...first, ...out].map(x => x.id);
+  }
+
+  async function startRound(i, order, ownerOf, counts) {
+    const photoId = order[i], ownerId = ownerOf[photoId];
+    counts = { ...(counts || {}) };
+    const pool = shuffle(people.filter(p => p.id !== ownerId)).sort((a, b) => (counts[a.id] || 0) - (counts[b.id] || 0));
+    const d = pool.slice(0, 4); d.forEach(p => counts[p.id] = (counts[p.id] || 0) + 1);
+    const options = shuffle([ownerId, ...d.map(p => p.id)]);
+    getDisplay(photoId); if (order[i + 1]) getDisplay(order[i + 1]);
+    await updateDoc(gref, { phase: 'question', round: i, photoId, ownerId, options, startedAt: Date.now(), distractorCounts: counts, shared: null, votes: {}, correctCount: 0, voters: 0 });
+  }
+
+  async function resetScores() {
+    await deleteAll('answers'); await deleteAll('history');
+    const s = await getDocs(col('players')); const b = writeBatch(db);
+    s.docs.forEach(d => b.set(d.ref, { score: 0, correctN: 0, answeredN: 0, sumMs: 0 }, { merge: true }));
+    await b.commit();
+  }
+
+  async function startGame() {
+    if (busy) return; busy = true;
+    try {
+      const order = buildOrder();
+      const ownerOf = Object.fromEntries(photos.map(p => [p.id, p.ownerId]));
+      await resetScores();
+      await updateDoc(gref, { order, ownerOf, distractorCounts: {} });
+      await startRound(0, order, ownerOf, {});
+    } finally { busy = false; }
+  }
+
+  async function next() {
+    if (!state || busy) return; busy = true;
+    try {
+      if (state.phase === 'lobby') { busy = false; return startGame(); }
+      if (state.phase === 'question') { busy = false; return reveal(); }
+      if (state.phase === 'reveal') {
+        await setDoc(dref('history', String(state.round)), { shared: state.shared ?? false }, { merge: true });
+        if (state.round + 1 < (state.order || []).length) await startRound(state.round + 1, state.order, state.ownerOf, state.distractorCounts);
+        else await updateDoc(gref, { phase: 'titles' });
+      } else if (state.phase === 'titles') await updateDoc(gref, { phase: 'podium' });
+    } finally { busy = false; }
+  }
+
+  async function endNow() {
+    if (state.phase === 'reveal') await setDoc(dref('history', String(state.round)), { shared: state.shared ?? false }, { merge: true });
+    await updateDoc(gref, { phase: 'titles' });
+  }
+
+  function render(force) {
+    if (!state) { app.innerHTML = '<div class="screen center"><p class="waiting">טוען…</p></div>'; return; }
+    const key = `${state.phase}|${state.round}`;
+    if (force || key !== lastKey || !$('#hroot')) { lastKey = key; full(); }
+    dynamic();
+  }
+
+  function topBar(extra = '') {
+    const total = (state.order || []).length;
+    return `<div class="h-top"><div class="h-title">📸 מי בתמונה?</div>
+      <div class="h-ctr">${total && ['question', 'reveal'].includes(state.phase) ? `<span class="chip">תמונה ${state.round + 1} / ${total}</span>` : ''}${extra}</div></div>`;
+  }
+
+  function full() {
+    const ph = state.phase;
+    if (ph === 'lobby') {
+      const owners = new Set(photos.map(p => p.ownerId));
+      const joinUrl = GAME_URL + '#play';
+      app.innerHTML = `<div class="screen" id="hroot">${topBar(`<a class="btn sm ghost" href="#admin">⚙️ ניהול</a>`)}
+        <div class="lobby">
+          <div><img src="https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=10&data=${encodeURIComponent(joinUrl)}" alt="QR"><div class="url">${esc(joinUrl)}</div></div>
+          <div><h1>סרקו כדי להצטרף 📱</h1>
+            <div class="stat">${photos.length} תמונות · ${owners.size} שלחו · ${people.length} משתתפים</div>
+            <div class="chips" id="joined"></div>
+            <button class="btn big" id="start" style="width:auto;font-size:2vw;padding:1.2vw 3vw" ${photos.length && people.length >= 2 ? '' : 'disabled'}>🚀 מתחילים!</button>
+          </div></div></div>`;
+      $('#start').onclick = startGame;
+      return;
+    }
+    if (ph === 'question' || ph === 'reveal') {
+      const isRev = ph === 'reveal';
+      const photo = photos.find(p => p.id === state.photoId) || {};
+      app.innerHTML = `<div class="screen" id="hroot">${topBar(`<button class="btn sm ghost" id="end">🏁 סיום עכשיו</button><button class="btn sm" id="nxt">${isRev ? 'הבא ⏭' : 'לחשוף 👀'}</button>`)}
+        <div class="h-grid">
+          <div class="h-photo"><img id="pimg" alt="">${isRev && photo.caption ? `<div class="h-cap">💬 ${esc(photo.caption)}</div>` : ''}</div>
+          <div>
+            ${isRev ? `<div class="h-owner">📸 של ${esc(nameOf(state.ownerId))}!</div>` : `<div style="font-size:2.6vw;font-weight:900">של מי התמונה? <span id="tleft" style="color:#ffd60a"></span></div><div class="tbar"><i id="tbar" style="width:100%"></i></div>`}
+            <div class="h-opts">${(state.options || []).map((id, i) => `<div class="h-opt ${isRev ? (id === state.ownerId ? 'right' : 'wrong') : ''}" data-id="${id}" style="background:${OPT_COLORS[i]};animation-delay:${i * 80}ms"><i class="vb" style="width:0"></i><span class="sh">${OPT_SHAPES[i]}</span><span>${esc(nameOf(id))}</span><b class="vc"></b></div>`).join('')}</div>
+            <div class="h-info" id="info"></div>
+            ${isRev ? '<div id="share"></div>' : ''}
+          </div></div></div>`;
+      getDisplay(state.photoId).then(src => { const im = $('#pimg'); if (im) im.src = src; });
+      $('#nxt').onclick = next;
+      confirmBtn($('#end'), endNow);
+      return;
+    }
+    if (ph === 'titles') { renderTitles(); return; }
+    if (ph === 'podium') { renderPodium(); return; }
+  }
+
+  function dynamic() {
+    const ph = state.phase;
+    if (ph === 'lobby') {
+      const j = $('#joined'); if (j) j.innerHTML = players.length ? players.map(p => `<span class="chip">${dot(p.name)}${esc(p.name)}</span>`).join('') : '<span style="color:var(--mut)">עוד אף אחד לא הצטרף…</span>';
+    }
+    if (ph === 'question') {
+      const names = answers.map(a => players.find(p => p.id === a.deviceId)?.name).filter(Boolean);
+      const info = $('#info'); if (info) info.innerHTML = `ענו <b>${answers.length}</b> / ${players.length}<br>${names.map(n => `<span class="chip">${dot(n)}${esc(n)}</span>`).join('')}`;
+    }
+    if (ph === 'reveal') {
+      const votes = state.votes || {}, max = Math.max(1, ...Object.values(votes));
+      $$('.h-opt').forEach(el => { const v = votes[el.dataset.id] || 0; el.querySelector('.vb').style.width = (v / max * 100) + '%'; el.querySelector('.vc').textContent = v ? `${v} 🙋` : ''; });
+      const right = answers.filter(a => a.correct).sort((a, b) => b.points - a.points);
+      const info = $('#info');
+      if (info) info.innerHTML = right.length ? `צדקו: ${right.map(a => `<span class="chip">${dot(players.find(p => p.id === a.deviceId)?.name)}${esc(players.find(p => p.id === a.deviceId)?.name || '')} <b>+${a.points}</b></span>`).join('')}` : 'אף אחד לא זיהה! 🕵️';
+      const sh = $('#share'); const on = nameOf(state.ownerId);
+      if (sh) sh.innerHTML = `<div class="h-share">${state.shared === true ? `🎤 ${esc(on)} מספר/ת…` : state.shared === false ? `⏭ ${esc(on)} מעדיף/ה לדלג` : `⏳ מחכים ל${esc(on)}…`}</div>`;
+    }
+  }
+
+  async function renderTitles() {
+    app.innerHTML = `<div class="screen" id="hroot">${topBar(`<button class="btn sm" id="nxt">לפודיום 🏆</button>`)}<h1 style="text-align:center;font-size:4vw">🏅 התארים של הערב</h1><div class="titles" id="tl"></div></div>`;
+    $('#nxt').onclick = next;
+    const hs = (await getDocs(col('history'))).docs.map(d => d.data());
+    const per = {}, wrongVotes = {};
+    hs.forEach(h => {
+      const o = per[h.ownerId] = per[h.ownerId] || { n: 0, r: 0, bluff: 0, shared: 0 };
+      o.n++; o.r += h.voters ? h.correct / h.voters : 0;
+      if (h.ownerChoice && h.ownerChoice !== h.ownerId) o.bluff++;
+      if (h.shared) o.shared++;
+      Object.entries(h.votes || {}).forEach(([pid, c]) => { if (pid !== h.ownerId) wrongVotes[pid] = (wrongVotes[pid] || 0) + c - (pid === h.ownerChoice ? 1 : 0); });
+    });
+    const T = [];
+    const best = (arr, f) => arr.reduce((a, b) => (a == null || f(b) > f(a) ? b : a), null);
+    const det = best(players.filter(p => p.correctN), p => p.correctN);
+    if (det) T.push(['🕵️', 'הבלש/ית', det.name, `${det.correctN} זיהויים נכונים`]);
+    const fast = best(players.filter(p => p.correctN >= 2), p => -p.sumMs / p.correctN);
+    if (fast) T.push(['⚡', 'הברק', fast.name, `ממוצע ${(fast.sumMs / fast.correctN / 1000).toFixed(1)} שניות לתשובה נכונה`]);
+    const owners = Object.entries(per).map(([id, o]) => ({ id, ...o, avg: o.r / o.n }));
+    const surp = best(owners, o => -o.avg);
+    if (surp) T.push(['🎭', 'הכי מפתיע/ה', nameOf(surp.id), `רק ${Math.round(surp.avg * 100)}% זיהו את התמונות`]);
+    const open = best(owners.filter(o => o.id !== surp?.id), o => o.avg);
+    if (open) T.push(['📖', 'ספר פתוח', nameOf(open.id), `${Math.round(open.avg * 100)}% זיהו מיד`]);
+    const sus = best(Object.entries(wrongVotes).filter(([, c]) => c > 0), ([, c]) => c);
+    if (sus) T.push(['🎯', 'החשוד/ה הקבוע/ה', nameOf(sus[0]), `${sus[1]} פעמים חשבו שזה את/ה`]);
+    const bl = best(owners.filter(o => o.bluff), o => o.bluff);
+    if (bl) T.push(['🃏', 'מאסטר/ית בלוף', nameOf(bl.id), `בלפ/ה על ${bl.bluff} מהתמונות שלו/ה`]);
+    const st = best(owners.filter(o => o.shared), o => o.shared);
+    if (st) T.push(['🎤', 'מספר/ת הסיפורים', nameOf(st.id), `סיפר/ה על ${st.shared} תמונות`]);
+    const tl = $('#tl'); if (!tl) return;
+    tl.innerHTML = T.length ? T.map((t, i) => `<div class="tcard" style="animation-delay:${i * 0.7}s"><div class="e">${t[0]}</div><div class="t">${t[1]}</div><div class="n">${esc(t[2])}</div><div class="s">${esc(t[3])}</div></div>`).join('') : '<p class="waiting" style="text-align:center;grid-column:1/-1">לא שוחקו מספיק סבבים לתארים 🙂</p>';
+  }
+
+  function renderPodium() {
+    const sorted = [...players].sort((a, b) => (b.score || 0) - (a.score || 0));
+    const col3 = (p, place) => p ? `<div class="pcol p${place}">
+        <div class="dancer" style="--c:${pcolor(p.name)}"><div class="arm l"></div><div class="arm r"></div><div class="leg l"></div><div class="leg r"></div><div class="torso"></div><div class="head">${esc(p.name.trim()[0] || '?')}</div><div class="eyes"><i></i><i></i></div></div>
+        <div class="pname">${esc(p.name)}</div><div class="pscore">${p.score || 0} נק׳</div>
+        <div class="pblock">${place}</div></div>` : '';
+    app.innerHTML = `<div class="screen" id="hroot">${topBar(`<button class="btn sm ghost" id="back">↩ ללובי</button>`)}
+      <h1 style="text-align:center;font-size:4vw;margin:0">🏆 המנצחים</h1>
+      <div class="podium">${col3(sorted[1], 2)}${col3(sorted[0], 1)}${col3(sorted[2], 3)}</div>
+      <div class="others">${sorted.slice(3).map((p, i) => `<span class="chip">${i + 4}. ${esc(p.name)} · ${p.score || 0}</span>`).join('')}</div></div>`;
+    confirmBtn($('#back'), () => updateDoc(gref, { phase: 'lobby', round: -1 }));
+    const cf = document.createElement('div'); cf.className = 'confetti';
+    const cols = ['#ff4d6d', '#4cc9f0', '#ffd60a', '#80ed99', '#c77dff', '#fff'];
+    cf.innerHTML = Array.from({ length: 90 }, () => `<i style="left:${Math.random() * 100}vw;background:${cols[Math.floor(Math.random() * cols.length)]};animation-duration:${3 + Math.random() * 4}s;animation-delay:${-Math.random() * 6}s;transform:rotate(${Math.random() * 360}deg)"></i>`).join('');
+    document.body.appendChild(cf);
+  }
+}
+
+/* ================= admin ================= */
+function admin() {
+  let people = [], photos = [], state = {};
+  app.innerHTML = `<div class="screen adm"><a class="back" href="#">←</a>
+    <h1>⚙️ ניהול</h1>
+    <div class="card"><label>📎 קישור להעלאת תמונות (לשלוח לקבוצה)</label>
+      <div class="row"><input id="upl" readonly value="${esc(GAME_URL + '#upload')}"><button class="btn sm" id="cp">העתקה</button></div></div>
+    <div class="card"><label>👥 משתתפים</label>
+      <div id="plist"></div>
+      <textarea id="names" rows="3" placeholder="הוספת שמות, שם בכל שורה"></textarea>
+      <button class="btn sm" id="addN" style="align-self:flex-start">הוספה</button></div>
+    <div class="card"><label>🖼️ תמונות</label><p class="sub" style="margin:0">לחצו "טשטוש" בתמונה שיש בה פנים חושפות. המערכת מזהה פנים אוטומטית, ואפשר להוסיף אזורים בגרירה.</p><div id="pgrid"></div></div>
+    <div class="card"><label>🎛️ הגדרות משחק</label>
+      <div class="row"><span>זמן לניחוש:</span><select id="dur" style="width:auto">${[10, 15, 20, 25, 30, 45].map(s => `<option value="${s}">${s} שניות</option>`).join('')}</select></div>
+      <div class="row" style="flex-wrap:wrap"><a class="btn sm alt" href="#host">🖥️ למסך הגדול</a><button class="btn sm ghost" id="rst">♻️ איפוס משחק (ניקוד ומחוברים)</button><button class="btn sm ghost" id="wipe">🗑️ מחיקת כל התמונות</button></div>
+      <div class="msg" id="amsg"></div></div>
+  </div>`;
+  $('#cp').onclick = () => { $('#upl').select(); navigator.clipboard?.writeText($('#upl').value); $('#cp').textContent = 'הועתק ✓'; };
+  $('#addN').onclick = async () => {
+    const names = $('#names').value.split('\n').map(s => s.trim()).filter(Boolean);
+    const exist = new Set(people.map(p => p.name.trim()));
+    const b = writeBatch(db); names.filter(n => !exist.has(n)).forEach(n => b.set(dref('people', uid()), { name: n, createdAt: Date.now() }));
+    await b.commit(); $('#names').value = '';
+  };
+  listen(gref, s => { state = s.data() || {}; $('#dur').value = String(state.duration || 20); });
+  $('#dur').onchange = () => setDoc(gref, { duration: Number($('#dur').value) }, { merge: true });
+  confirmBtn($('#rst'), async () => {
+    $('#amsg').textContent = 'מאפס…';
+    await deleteAll('answers'); await deleteAll('history'); await deleteAll('players');
+    await setDoc(gref, { phase: 'lobby', round: -1, duration: state.duration || 20 });
+    $('#amsg').textContent = 'אופס ✓ (התמונות והמשתתפים נשארו)';
+  });
+  confirmBtn($('#wipe'), async () => {
+    $('#amsg').textContent = 'מוחק…'; await deleteAll('photos'); await deleteAll('photoData'); imgCache.clear(); $('#amsg').textContent = 'כל התמונות נמחקו ✓';
+  });
+  watchPeople(p => { people = p; renderPeople(); renderPhotos(); });
+  listen(col('photos'), s => { photos = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)); renderPeople(); renderPhotos(); });
+
+  function renderPeople() {
+    const cnt = {}; photos.forEach(p => cnt[p.ownerId] = (cnt[p.ownerId] || 0) + 1);
+    $('#plist').innerHTML = people.map(p => `<span class="chip">${dot(p.name)}${esc(p.name)} <small style="color:var(--mut)">${cnt[p.id] || 0}/4 📷</small> <button class="btn sm ghost" style="padding:2px 8px" data-rm="${p.id}">✕</button></span>`).join('') || '<span style="color:var(--mut)">אין עדיין משתתפים</span>';
+    $$('[data-rm]').forEach(b => confirmBtn(b, async () => {
+      const id = b.dataset.rm;
+      for (const ph of photos.filter(x => x.ownerId === id)) { await deleteDoc(dref('photos', ph.id)); await deleteDoc(dref('photoData', ph.id)); }
+      await deleteDoc(dref('people', id));
+    }));
+  }
+  function renderPhotos() {
+    const nameOf = id => people.find(p => p.id === id)?.name || '?';
+    $('#pgrid').innerHTML = `<div class="agrid">${photos.map(p => `<div class="aitem"><img data-pid="${p.id}" alt="">
+      <div class="meta"><b>${esc(nameOf(p.ownerId))}</b> ${p.blurred ? '<span class="badge">מטושטש ✓</span>' : ''}
+      <span style="color:var(--mut)">${esc(p.caption || '')}</span>
+      <div class="btns"><button class="btn sm alt" data-blur="${p.id}">🫥 טשטוש</button>${p.blurred ? `<button class="btn sm ghost" data-orig="${p.id}">↩ מקור</button>` : ''}<button class="btn sm ghost" data-del="${p.id}">🗑</button></div></div></div>`).join('')}</div>` + (photos.length ? '' : '<span style="color:var(--mut)">עוד לא הועלו תמונות</span>');
+    $$('#pgrid img[data-pid]').forEach(async im => { im.src = await getDisplay(im.dataset.pid); });
+    $$('[data-blur]').forEach(b => b.onclick = () => openBlur(b.dataset.blur));
+    $$('[data-orig]').forEach(b => confirmBtn(b, async () => {
+      const id = b.dataset.orig; const s = await getDoc(dref('photoData', id));
+      await updateDoc(dref('photoData', id), { display: s.data().orig }); imgCache.delete(id); await updateDoc(dref('photos', id), { blurred: false });
+    }));
+    $$('[data-del]').forEach(b => confirmBtn(b, async () => { const id = b.dataset.del; await deleteDoc(dref('photos', id)); await deleteDoc(dref('photoData', id)); imgCache.delete(id); }));
+  }
+}
+
+/* ---------- face blur editor ---------- */
+let detectorP = null;
+function getDetector() {
+  if (!detectorP) detectorP = (async () => {
+    const base = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+    const v = await import(base + '/vision_bundle.mjs');
+    const fs = await v.FilesetResolver.forVisionTasks(base + '/wasm');
+    return v.FaceDetector.createFromOptions(fs, {
+      baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite' },
+      runningMode: 'IMAGE', minDetectionConfidence: 0.45
+    });
+  })().catch(e => { detectorP = null; throw e; });
+  return detectorP;
+}
+async function detectFaces(img) {
+  const det = await getDetector();
+  const W = img.naturalWidth, H = img.naturalHeight, found = [];
+  const run = (sx, sy, sw, sh) => {
+    const c = document.createElement('canvas'); const sc = Math.min(1, 1024 / Math.max(sw, sh));
+    c.width = Math.round(sw * sc); c.height = Math.round(sh * sc);
+    c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    for (const d of det.detect(c).detections) {
+      const b = d.boundingBox; found.push({ x: sx + b.originX / sc, y: sy + b.originY / sc, w: b.width / sc, h: b.height / sc });
+    }
+  };
+  run(0, 0, W, H);
+  const tw = W * 0.6, th = H * 0.6;
+  for (const fx of [0, 0.4]) for (const fy of [0, 0.4]) run(W * fx, H * fy, tw, th);
+  // merge overlapping detections
+  const iou = (a, b) => { const x1 = Math.max(a.x, b.x), y1 = Math.max(a.y, b.y), x2 = Math.min(a.x + a.w, b.x + b.w), y2 = Math.min(a.y + a.h, b.y + b.h); const i = Math.max(0, x2 - x1) * Math.max(0, y2 - y1); return i / Math.min(a.w * a.h, b.w * b.h); };
+  const out = [];
+  found.sort((a, b) => b.w * b.h - a.w * a.h).forEach(f => { if (!out.some(o => iou(o, f) > 0.3)) out.push(f); });
+  // grow box to cover hair / chin
+  return out.map(f => { const w = f.w * 1.45, h = f.h * 1.7; return { x: Math.max(0, f.x + f.w / 2 - w / 2), y: Math.max(0, f.y + f.h / 2 - h * 0.55), w, h }; });
+}
+function blurBox(ctx, b) {
+  const tw = Math.max(2, Math.round(b.w / 16)), th = Math.max(2, Math.round(b.h / 16));
+  const t = document.createElement('canvas'); t.width = tw; t.height = th;
+  t.getContext('2d').drawImage(ctx.canvas, b.x, b.y, b.w, b.h, 0, 0, tw, th);
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.beginPath(); ctx.ellipse(b.x + b.w / 2, b.y + b.h / 2, b.w / 2, b.h / 2, 0, 0, Math.PI * 2); ctx.clip();
+  ctx.drawImage(t, 0, 0, tw, th, b.x, b.y, b.w, b.h); ctx.restore();
+}
+async function openBlur(id) {
+  const s = await getDoc(dref('photoData', id)); const orig = s.data().orig;
+  const img = await loadImg(orig);
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = `<div class="help" id="bst">🔍 מזהה פנים…</div><canvas id="bc"></canvas>
+    <div class="help">גררו כדי להוסיף אזור טשטוש · לחיצה על אזור מוחקת אותו</div>
+    <div class="row"><button class="btn" id="bsave">💾 שמירה</button><button class="btn ghost" id="bclr">ניקוי הכל</button><button class="btn ghost" id="bcancel">ביטול</button></div>`;
+  document.body.appendChild(m);
+  const c = $('#bc', m), ctx = c.getContext('2d'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+  let boxes = [], drag = null;
+  const draw = (preview = true) => {
+    ctx.drawImage(img, 0, 0);
+    boxes.forEach(b => blurBox(ctx, b));
+    const tmp = drag && drag.moved ? [norm(drag)] : [];
+    if (preview) { ctx.lineWidth = Math.max(2, c.width / 300); ctx.setLineDash([10, 8]); ctx.strokeStyle = '#ffd60a'; [...boxes, ...tmp].forEach(b => ctx.strokeRect(b.x, b.y, b.w, b.h)); ctx.setLineDash([]); }
+  };
+  const norm = d => ({ x: Math.min(d.x0, d.x1), y: Math.min(d.y0, d.y1), w: Math.abs(d.x1 - d.x0), h: Math.abs(d.y1 - d.y0) });
+  const pos = e => { const r = c.getBoundingClientRect(); return [(e.clientX - r.left) * c.width / r.width, (e.clientY - r.top) * c.height / r.height]; };
+  c.onpointerdown = e => { const [x, y] = pos(e); drag = { x0: x, y0: y, x1: x, y1: y, moved: false }; c.setPointerCapture(e.pointerId); };
+  c.onpointermove = e => { if (!drag) return; const [x, y] = pos(e); drag.x1 = x; drag.y1 = y; if (Math.abs(x - drag.x0) + Math.abs(y - drag.y0) > 8) drag.moved = true; draw(); };
+  c.onpointerup = e => {
+    if (!drag) return;
+    if (drag.moved) { const b = norm(drag); if (b.w > 10 && b.h > 10) boxes.push(b); }
+    else { const [x, y] = [drag.x0, drag.y0]; const i = boxes.findIndex(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h); if (i >= 0) boxes.splice(i, 1); }
+    drag = null; draw();
+  };
+  draw();
+  try { boxes = await detectFaces(img); $('#bst', m).textContent = boxes.length ? `נמצאו ${boxes.length} פרצופים ✓ אפשר לתקן ידנית` : 'לא נמצאו פרצופים אוטומטית. גררו על הפנים כדי לטשטש'; }
+  catch (e) { console.error(e); $('#bst', m).textContent = 'הזיהוי האוטומטי לא נטען. גררו על הפנים כדי לטשטש'; }
+  draw();
+  $('#bcancel', m).onclick = () => m.remove();
+  $('#bclr', m).onclick = () => { boxes = []; draw(); };
+  $('#bsave', m).onclick = async () => {
+    $('#bsave', m).disabled = true;
+    draw(false); const out = canvasToJpeg(c);
+    await updateDoc(dref('photoData', id), { display: out });
+    await updateDoc(dref('photos', id), { blurred: boxes.length > 0 });
+    imgCache.set(id, Promise.resolve(out));
+    const im = $(`#pgrid img[data-pid="${id}"]`); if (im) im.src = out;
+    m.remove();
+  };
+}
+
+route();
+</script>
+</body>
+</html>
