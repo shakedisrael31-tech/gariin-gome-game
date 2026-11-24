@@ -164,8 +164,13 @@ button.chip{color:#fff;cursor:pointer;font-size:15px}
 .catfig .catsign{font-size:1vw}
 .catfig.lob{left:30vw;bottom:1vh}
 .catfig.tr{right:8.5vw;bottom:1vh;left:auto}
-.catfig.peek{left:-1vw;top:-4.6vw}
+.catfig.peek{left:-1vw;top:-5.6vw}
 .catfig.peek .cat{width:5vw}
+.lucky{position:relative;width:7vw;aspect-ratio:411/524;filter:drop-shadow(0 .5vw .6vw #000a)}
+.lucky img{position:absolute;inset:0;width:100%;height:100%}
+.lucky .arm{transform-origin:79% 60%;animation:lwave .55s ease-in-out infinite alternate}
+@keyframes lwave{from{transform:rotate(-9deg)}to{transform:rotate(7deg)}}
+.catfig.peek .lucky{width:4.6vw}
 .catfig.dance{left:31vw;bottom:2vh;animation:catd .45s ease-in-out infinite alternate}
 @keyframes catd{from{transform:translateY(0) rotate(-6deg)}to{transform:translateY(-1.5vw) rotate(6deg)}}
 .men-wrap{position:absolute;left:50%;bottom:.5vh;transform:translateX(-50%);z-index:2;width:15vw}
@@ -962,7 +967,7 @@ function host() {
 
   const ctrl = extra => `<div class="h-ctrl"><button class="btn sm ghost" id="mus">${musicOn ? '🔊' : '🔇'} מוזיקה</button>${(state.order || []).length && ['question', 'reveal'].includes(state.phase) ? `<span class="chip">תמונה ${state.round + 1} / ${state.order.length}</span>` : ''}${extra}</div>`;
   const hostFig = (cls, bubble = '') => `<div class="hostfig ${cls}"><div class="bubble" id="bub" ${bubble ? '' : 'hidden'}>${esc(bubble)}</div><img src="assets/host.webp" alt=""></div>`;
-  const catFig = (cls, sign = true) => `<div class="catfig ${cls}">${sign ? '<div class="catsign">אוחנה הוא חתול</div>' : ''}${manekiSVG('cat')}</div>`;
+  const catFig = cls => `<div class="catfig ${cls}"><div class="lucky"><img src="assets/luckycat-body.webp" alt=""><img class="arm" src="assets/luckycat-arm.webp" alt=""></div></div>`;
   const progress = () => { const t = (state.order || []).length; return t ? Math.min(8, Math.ceil(8 * (state.round + 1) / t)) : 0; };
   const setBubble = txt => { const b = $('#bub'); if (!b) return; if (!txt) { b.hidden = true; return; } if (b.textContent !== txt || b.hidden) { b.textContent = txt; b.hidden = false; } };
 
