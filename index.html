@@ -154,6 +154,9 @@ button.chip{color:#fff;cursor:pointer;font-size:15px}
 .bubble{position:absolute;bottom:92%;left:55%;background:#fff;color:#1a1033;font-family:'Suez One',Rubik,serif;border-radius:1.4vw;padding:.7vw 1.3vw;font-size:1.7vw;white-space:nowrap;box-shadow:0 .4vw 0 #0005;animation:pop .4s both;border:.25vw solid #1a1033}
 .bubble::after{content:'';position:absolute;bottom:-1.1vw;left:2vw;border:.9vw solid transparent;border-top:1.2vw solid #1a1033;border-bottom:0}
 .bubble[hidden]{display:none}
+.ytbox{position:fixed;top:2.2vh;right:8.6vw;width:13vw;aspect-ratio:16/9;z-index:6;border:.25vw solid #e8b84a;border-radius:.7vw;overflow:hidden;box-shadow:0 .8vw 2vw #000a;background:#000}
+.ytbox[hidden]{display:none}
+.ytbox iframe{width:100%;height:100%;display:block;pointer-events:none}
 .catfig{position:absolute;z-index:5;display:flex;flex-direction:column;align-items:center;gap:.3vw}
 .catfig .cat{width:7vw;height:auto;filter:drop-shadow(0 .4vw .4vw #0008)}
 .catfig .catsign{font-size:1vw}
@@ -422,7 +425,7 @@ function addStage() {
 const GAME_URL = location.origin + location.pathname;
 
 let unsubs = [], timers = [];
-function cleanup() { unsubs.forEach(u => { try { u(); } catch (e) {} }); unsubs = []; timers.forEach(clearInterval); timers = []; document.onkeydown = null; document.body.classList.remove('hostmode'); $('.confetti')?.remove(); $('.stage')?.remove(); }
+function cleanup() { unsubs.forEach(u => { try { u(); } catch (e) {} }); unsubs = []; timers.forEach(clearInterval); timers = []; document.onkeydown = null; document.body.classList.remove('hostmode'); $('.confetti')?.remove(); $('.stage')?.remove(); $('.ytbox')?.remove(); ytP = null; ytReady = null; curSong = null; app.onclick = null; }
 const listen = (ref, cb) => unsubs.push(onSnapshot(ref, cb, err => console.error(err)));
 
 function watchPeople(cb) {
@@ -512,6 +515,40 @@ function registerUI(el, people, onDone) {
     localStorage.setItem('pg_person', id); onDone(id, name);
   };
   $$('.pick', el).forEach(b => b.onclick = () => { const p = people.find(x => x.id === b.dataset.id); localStorage.setItem('pg_person', p.id); onDone(p.id, p.name); });
+}
+
+/* ---------- music (YouTube) on the big screen ---------- */
+const SONGS = { lobby: 'pALF48lFfkU', podium: 'aii3fDdZnrM' };
+let musicOn = false, ytP = null, ytReady = null, curSong = null;
+function ensurePlayer() {
+  if (ytReady) return ytReady;
+  const box = document.createElement('div'); box.className = 'ytbox'; box.hidden = true; box.innerHTML = '<div id="ytp"></div>';
+  document.body.appendChild(box);
+  ytReady = new Promise(res => {
+    const make = () => {
+      ytP = new YT.Player('ytp', {
+        width: '100%', height: '100%',
+        playerVars: { autoplay: 1, controls: 0, rel: 0, playsinline: 1, modestbranding: 1 },
+        events: {
+          onReady: () => res(ytP),
+          onStateChange: e => { if (e.data === 0) { ytP.seekTo(0); ytP.playVideo(); } },
+          onError: e => console.warn('YouTube error', e.data)
+        }
+      });
+    };
+    if (window.YT && YT.Player) make();
+    else { window.onYouTubeIframeAPIReady = make; const sc = document.createElement('script'); sc.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(sc); }
+  });
+  return ytReady;
+}
+async function syncMusic(phase) {
+  const want = musicOn ? (phase === 'lobby' ? 'lobby' : phase === 'podium' ? 'podium' : null) : null;
+  const box = $('.ytbox'); if (box) box.hidden = !want;
+  if (!musicOn) { try { ytP?.pauseVideo(); } catch (e) {} curSong = null; return; }
+  const p = await ensurePlayer(); $('.ytbox').hidden = !want;
+  if (want === curSong) return;
+  curSong = want;
+  if (!want) p.pauseVideo(); else { p.loadVideoById(SONGS[want]); p.setVolume(80); }
 }
 
 /* ================= router ================= */
@@ -818,11 +855,15 @@ function host() {
   function render(force) {
     if (!state) { app.innerHTML = '<div class="screen center"><p class="waiting">טוען…</p></div>'; return; }
     const key = `${state.phase}|${state.round}`;
-    if (force || key !== lastKey || !$('#hroot')) { lastKey = key; full(); }
+    if (force || key !== lastKey || !$('#hroot')) { lastKey = key; full(); syncMusic(state.phase); }
     dynamic();
   }
+  app.onclick = e => {
+    const b = e.target.closest('#mus'); if (!b) return;
+    musicOn = !musicOn; b.textContent = musicOn ? '🔊 מוזיקה' : '🔇 מוזיקה'; syncMusic(state?.phase);
+  };
 
-  const ctrl = extra => `<div class="h-ctrl">${(state.order || []).length && ['question', 'reveal'].includes(state.phase) ? `<span class="chip">תמונה ${state.round + 1} / ${state.order.length}</span>` : ''}${extra}</div>`;
+  const ctrl = extra => `<div class="h-ctrl"><button class="btn sm ghost" id="mus">${musicOn ? '🔊' : '🔇'} מוזיקה</button>${(state.order || []).length && ['question', 'reveal'].includes(state.phase) ? `<span class="chip">תמונה ${state.round + 1} / ${state.order.length}</span>` : ''}${extra}</div>`;
   const hostFig = (cls, bubble = '') => `<div class="hostfig ${cls}"><div class="bubble" id="bub" ${bubble ? '' : 'hidden'}>${esc(bubble)}</div><img src="assets/host.webp" alt=""></div>`;
   const catFig = (cls, sign = true) => `<div class="catfig ${cls}">${sign ? '<div class="catsign">אוחנה הוא חתול</div>' : ''}${pixelSVG(CAT, 'cat')}</div>`;
   const progress = () => { const t = (state.order || []).length; return t ? Math.min(8, Math.ceil(8 * (state.round + 1) / t)) : 0; };
