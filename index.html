@@ -171,7 +171,7 @@ button.chip{color:#fff;cursor:pointer;font-size:15px}
 body.playmode .screen{padding-bottom:110px}
 .recbox{display:flex;flex-direction:column;gap:8px;align-items:flex-start;background:#0004;border:1px dashed #ffd45c66;border-radius:14px;padding:10px}
 .recbox audio{width:100%}
-.ytbox{position:fixed;top:2.2vh;right:8.6vw;width:13vw;aspect-ratio:16/9;z-index:6;border:.25vw solid #e8b84a;border-radius:.7vw;overflow:hidden;box-shadow:0 .8vw 2vw #000a;background:#000}
+.ytbox{position:fixed;left:-9999px;top:0;width:320px;height:180px;opacity:0;pointer-events:none}
 .ytbox[hidden]{display:none}
 .ytbox iframe{width:100%;height:100%;display:block;pointer-events:none}
 .catfig{position:absolute;z-index:5;display:flex;flex-direction:column;align-items:center;gap:.3vw}
@@ -347,7 +347,7 @@ const firebaseConfig = {
 const db = getFirestore(initializeApp(firebaseConfig));
 
 // Pages caches the page for ~10 minutes: if a newer version is online, reload once to get it
-const BUILD = '2026-11-26-0020';
+const BUILD = '2026-11-26-0025';
 (async () => {
   try {
     const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
