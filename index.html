@@ -347,7 +347,7 @@ const firebaseConfig = {
 const db = getFirestore(initializeApp(firebaseConfig));
 
 // Pages caches the page for ~10 minutes: if a newer version is online, reload once to get it
-const BUILD = '2026-11-26-0025';
+const BUILD = '2026-11-26-0030';
 (async () => {
   try {
     const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
@@ -838,9 +838,11 @@ function play() {
   const nameOf = id => people.find(p => p.id === id)?.name || '?';
 
   watchPeople(p => { const had = people.length; people = p; if (!had && p.length && player === null) { joinShown = false; } render(); });
-  listen(gref, s => { state = s.data() || { phase: 'lobby' }; render(); });
-  listen(dref('players', deviceId), s => { player = s.exists() ? s.data() : null; render(); });
-  listen(col('players'), s => { players = s.docs.map(d => d.data()); if (state && ['titles', 'podium'].includes(state.phase)) render(); });
+  listen(gref, s => { const was = player; state = s.data() || { phase: 'lobby' }; refreshMe(); if (was && !player) joinShown = false; render(); });
+  let rawPlayer = undefined;
+  const refreshMe = () => { player = rawPlayer === undefined ? undefined : (rawPlayer && (!state?.gameId || rawPlayer.game === state.gameId) ? rawPlayer : null); };
+  listen(dref('players', deviceId), s => { rawPlayer = s.exists() ? s.data() : null; refreshMe(); render(); });
+  listen(col('players'), s => { players = s.docs.map(d => d.data()).filter(p => !state?.gameId || p.game === state.gameId); if (state && ['titles', 'podium'].includes(state.phase)) render(); });
   unsubs.push(() => unsubAns && unsubAns());
 
   function watchAnswer(r) {
@@ -907,7 +909,7 @@ function play() {
   function renderJoin() {
     const p = people.find(x => x.id === me);
     app.innerHTML = `<div class="screen"><a class="back" href="#">←</a><div class="phead">${marquee()}</div><div class="center" style="padding-top:0"><h1>הצטרפות למשחק</h1></div><div id="jw"></div></div>`;
-    const join = async (id, name) => { me = id; await setDoc(dref('players', deviceId), { personId: id, name, joinedAt: Date.now() }, { merge: true }); };
+    const join = async (id, name) => { me = id; await setDoc(dref('players', deviceId), { personId: id, name, joinedAt: Date.now(), game: state?.gameId || null, score: 0, correctN: 0, answeredN: 0, sumMs: 0 }); };
     if (p) {
       $('#jw').innerHTML = `<div class="card" style="align-items:center;text-align:center">${av(p, 'av-xl')}<b style="font-size:24px">${esc(p.name)}</b>
         <button class="btn big" id="asMe">להצטרף 🚀</button><button class="btn sm ghost" id="other">זה לא אני</button></div>`;
@@ -931,10 +933,12 @@ function host() {
   const softForce = () => !state || state.phase === 'lobby';
   watchPeople(p => { people = p; render(softForce()); });
   listen(col('photos'), s => { photos = s.docs.map(d => ({ id: d.id, ...d.data() })); render(softForce()); });
-  listen(col('players'), s => { players = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); });
+  let allPlayers = [];
+  const refilter = () => { players = allPlayers.filter(p => !state?.gameId || p.game === state.gameId); };
+  listen(col('players'), s => { allPlayers = s.docs.map(d => ({ id: d.id, ...d.data() })); refilter(); render(); });
   listen(gref, async s => {
-    if (!s.exists()) { await setDoc(gref, { phase: 'lobby', round: -1, duration: 20 }); return; }
-    state = s.data();
+    if (!s.exists()) { await setDoc(gref, { phase: 'lobby', round: -1, duration: 20, gameId: uid() }); return; }
+    state = s.data(); refilter();
     if ((state.phase === 'question' || state.phase === 'reveal') && ansRound !== state.round) {
       ansRound = state.round; answers = [];
       if (unsubAns) unsubAns();
@@ -1252,7 +1256,7 @@ function admin() {
     </div>
     <div class="card"><label>🎛️ הגדרות משחק</label>
       <div class="row"><span>זמן לניחוש:</span><select id="dur" style="width:auto">${[10, 15, 20, 25, 30, 45].map(s => `<option value="${s}">${s} שניות</option>`).join('')}</select></div>
-      <div class="row" style="flex-wrap:wrap"><a class="btn sm alt" href="#host">🖥️ למסך הגדול</a><button class="btn sm ghost" id="rst">♻️ איפוס משחק (ניקוד ומחוברים)</button><button class="btn sm ghost" id="wipe">🗑️ מחיקת כל התמונות</button></div>
+      <div class="row" style="flex-wrap:wrap"><a class="btn sm alt" href="#host">🖥️ למסך הגדול</a><button class="btn sm" id="rst">🆕 משחק חדש (מאפס ניקוד ומנתק את כל המחוברים)</button><button class="btn sm ghost" id="wipe">🗑️ מחיקת כל התמונות</button></div>
       <div class="msg" id="amsg"></div></div>
   </div>`;
   const songStatus = async () => {
@@ -1269,8 +1273,8 @@ function admin() {
   confirmBtn($('#rst'), async () => {
     $('#amsg').textContent = 'מאפס…';
     await deleteAll('answers'); await deleteAll('history'); await deleteAll('players'); await deleteAll('shouts');
-    await setDoc(gref, { phase: 'lobby', round: -1, duration: state.duration || 20 });
-    $('#amsg').textContent = 'אופס ✓ (התמונות והמשתתפים נשארו)';
+    await setDoc(gref, { phase: 'lobby', round: -1, duration: state.duration || 20, gameId: uid() });
+    $('#amsg').textContent = 'משחק חדש מוכן ✓ כולם צריכים להצטרף מחדש (התמונות והנרשמים נשארו)';
   });
   confirmBtn($('#wipe'), async () => {
     $('#amsg').textContent = 'מוחק…'; await deleteAll('photos'); await deleteAll('photoData'); await deleteAll('audio'); imgCache.clear(); $('#amsg').textContent = 'כל התמונות נמחקו ✓';
