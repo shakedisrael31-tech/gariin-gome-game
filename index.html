@@ -347,7 +347,7 @@ const firebaseConfig = {
 const db = getFirestore(initializeApp(firebaseConfig));
 
 // Pages caches the page for ~10 minutes: if a newer version is online, reload once to get it
-const BUILD = '2026-11-25-2305';
+const BUILD = '2026-11-25-2310';
 (async () => {
   try {
     const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
@@ -790,7 +790,7 @@ function upload() {
             if (blob.size > 650000) { $('#msg').textContent = 'ההקלטה ארוכה מדי, נסו קצר יותר'; return; }
             const fr = new FileReader(); fr.onload = () => { audioData = fr.result; $('#recPrev').src = audioData; $('#recPrev').hidden = false; $('#msg').textContent = 'ההקלטה מוכנה ✓'; ready(); }; fr.readAsDataURL(blob);
           };
-          rec.start(); $('#rec').textContent = '⏹️ לעצור (מקליט…)'; $('#msg').textContent = '🔴 מקליט… עד 30 שניות';
+          rec.start(1000); $('#rec').textContent = '⏹️ לעצור (מקליט…)'; $('#msg').textContent = '🔴 מקליט… עד 30 שניות';
           recTimer = setTimeout(() => { if (rec.state === 'recording') rec.stop(); }, 30000);
         } catch (e) { console.error(e); $('#msg').textContent = 'אין גישה למיקרופון. אפשר לכתוב משפט במקום'; }
       };
