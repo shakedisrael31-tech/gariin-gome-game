@@ -345,7 +345,7 @@ const firebaseConfig = {
 const db = getFirestore(initializeApp(firebaseConfig));
 
 // Pages caches the page for ~10 minutes: if a newer version is online, reload once to get it
-const BUILD = '2026-11-24-2345';
+const BUILD = '2026-11-25-0755';
 (async () => {
   try {
     const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
@@ -707,7 +707,7 @@ function upload() {
   app.innerHTML = `<div class="screen"><a class="back" href="#">←</a>
     <div class="phead">${marquee()}</div>
     <h1>📤 העלאת תמונות</h1>
-    <p class="sub">4 תמונות של דברים שקורים לך בחיים עכשיו: משמעותיות, מרגשות, מצחיקות.<br>אל תספרו לאף אחד מה שלחתם 🤫</p>
+    <p class="sub">3-4 תמונות של דברים שקורים לך בחיים עכשיו: משמעותיות, מרגשות, מצחיקות.<br><b style="color:#ffe08a">📸 עדיף תמונות שלא רואים בהן את הפרצוף שלך</b>, ככה יהיה יותר קשה לנחש.<br>אל תספרו לאף אחד מה שלחתם 🤫</p>
     <div id="who"></div>
     <div id="slots"></div></div>`;
   watchPeople(p => {
@@ -717,12 +717,16 @@ function upload() {
   });
   function renderWho() {
     const el = $('#who'), p = people.find(x => x.id === me);
-    const key = p ? `${me}|${(p.avatar || '').length}|${p.name}` : 'reg';
+    const key = p ? `${me}|${(p.avatar || '').length}|${p.name}|${!!p.absent}` : 'reg';
     if (key === whoKey) return; whoKey = key;
     if (!p) { registerUI(el, people, id => { me = id; whoKey = ''; renderWho(); watchMine(); }); return; }
     el.innerHTML = `<div class="card"><div class="row">${av(p, 'av-lg')}<div style="flex:1"><b style="font-size:20px">${esc(p.name)}</b><br>
       <label class="lnk">החלפת תמונת פרופיל<input type="file" accept="image/*" hidden id="chAv"></label></div>
-      <button class="btn sm ghost" id="notMe">זה לא אני</button></div></div>`;
+      <button class="btn sm ghost" id="notMe">זה לא אני</button></div>
+      <label class="row" style="gap:10px;cursor:pointer;font-weight:600"><input type="checkbox" id="absent" ${p.absent ? 'checked' : ''} style="width:22px;height:22px;flex:none"> אני לא אגיע למפגש 😢</label>
+      ${p.absent ? '<p class="sub" style="margin:0;font-size:14px">חבל! אז מספיק 2 תמונות, והן ישתתפו במשחק גם בלעדיך 💛</p>' : ''}</div>`;
+    $('#absent').onchange = e => updateDoc(dref('people', me), { absent: e.target.checked });
+    renderSlots();
     $('#notMe').onclick = () => { me = ''; localStorage.removeItem('pg_person'); whoKey = ''; renderWho(); watchMine(); };
     $('#chAv').onchange = async e => { const f = e.target.files[0]; if (!f) return; await updateDoc(dref('people', me), { avatar: await fileToAvatar(f), fc: true }); };
   }
@@ -739,14 +743,17 @@ function upload() {
   function renderSlots() {
     const el = $('#slots'); processed = null;
     if (!me) { el.innerHTML = ''; return; }
-    el.innerHTML = `<h2>התמונות שלך (${myPhotos.length}/4)</h2>
+    const absent = !!people.find(x => x.id === me)?.absent, max = absent ? 2 : 4, min = absent ? 2 : 3, n = myPhotos.length;
+    el.innerHTML = `<h2>התמונות שלך (${n}/${absent ? 2 : '3-4'})</h2>
       <div class="thumbs">${myPhotos.map(p => `<div class="thumb"><img data-pid="${p.id}" alt=""><div class="cap">${esc(p.caption || '')}</div><button class="x" data-del="${p.id}">🗑</button></div>`).join('')}</div>
-      ${myPhotos.length < 4 ? `<div class="card">
+      ${n >= min ? `<div class="done">✅ סיימת! ${absent ? 'נתגעגע אליך 💛' : 'נתראה במפגש 🎉'}</div>` : ''}
+      ${n > max ? `<p class="msg" style="text-align:center">יש לך ${n} תמונות, ומספיקות ${max}. אפשר למחוק את המיותרות ב-🗑</p>` : ''}
+      ${n < max ? `<div class="card">${n >= min ? '<label>רוצה להוסיף עוד אחת? (לא חובה)</label>' : ''}
         <label class="filebtn">📷 בחירת תמונה<input type="file" accept="image/*" id="file" hidden></label>
         <img id="prev" class="prev" hidden alt="">
         <input id="cap" maxlength="100" placeholder="משפט קצר על התמונה (לא חובה, יופיע רק אחרי הניחוש)">
         <button class="btn" id="send" disabled>העלאה</button>
-        <div id="msg" class="msg"></div></div>` : `<div class="done">✅ סיימת! נתראה במפגש 🎉</div>`}
+        <div id="msg" class="msg"></div></div>` : ''}
       <p class="sub" style="font-size:14px">אם רואים בתמונה את הפנים שלך, נטשטש אותן לפני המשחק.</p>`;
     $$('img[data-pid]', el).forEach(async im => { im.src = await getDisplay(im.dataset.pid); });
     $$('[data-del]', el).forEach(b => confirmBtn(b, async () => {
@@ -760,7 +767,7 @@ function upload() {
       catch (e) { $('#msg').textContent = 'לא הצלחתי לקרוא את התמונה. נסו תמונה אחרת (JPG/PNG).'; }
     };
     $('#send').onclick = async () => {
-      if (!processed || myPhotos.length >= 4) return;
+      if (!processed || myPhotos.length >= (people.find(x => x.id === me)?.absent ? 2 : 4)) return;
       $('#send').disabled = true; $('#msg').textContent = 'מעלה…';
       try {
         const id = uid();
@@ -1113,7 +1120,7 @@ function host() {
       const info = $('#info');
       if (info) info.innerHTML = right.length ? `צדקו: ${right.map(a => `<span class="chip">${av(a.personId)}${esc(PEOPLE.get(a.personId)?.name || '')} <b>+${a.points}</b></span>`).join('')}` : 'אף אחד לא זיהה! 🕵️';
       const sh = $('#share'); const on = nameOf(state.ownerId);
-      if (sh) sh.innerHTML = `<div class="h-share">${state.shared === true ? `🎤 ${esc(on)} מספר/ת…` : state.shared === false ? `⏭ ${esc(on)} מעדיף/ה לדלג` : `⏳ מחכים ל${esc(on)}…`}</div>`;
+      if (sh) sh.innerHTML = `<div class="h-share">${PEOPLE.get(state.ownerId)?.absent ? `😢 ${esc(on)} לא הגיע/ה למפגש, אבל שלח/ה תמונות!` : state.shared === true ? `🎤 ${esc(on)} מספר/ת…` : state.shared === false ? `⏭ ${esc(on)} מעדיף/ה לדלג` : `⏳ מחכים ל${esc(on)}…`}</div>`;
       setBubble(state.shared === true ? 'הבמה שלך! 🎤' : (state.voters && !state.correctCount) ? 'אף אחד?! 😱' : state.round % 2 ? HOST_LINES[(state.round + 1) % HOST_LINES.length] : '');
     }
   }
@@ -1240,7 +1247,7 @@ function admin() {
 
   function renderPeople() {
     const cnt = {}; photos.forEach(p => cnt[p.ownerId] = (cnt[p.ownerId] || 0) + 1);
-    $('#plist').innerHTML = people.map(p => `<span class="chip">${av(p)}${esc(p.name)} <small style="color:var(--mut)">${cnt[p.id] || 0}/4 📷</small> <button class="btn sm ghost" style="padding:2px 8px" data-rm="${p.id}">✕</button></span>`).join('') || '<span style="color:var(--mut)">אין עדיין משתתפים</span>';
+    $('#plist').innerHTML = people.map(p => `<span class="chip">${av(p)}${esc(p.name)} <small style="color:var(--mut)">${cnt[p.id] || 0}/${p.absent ? 2 : 4} 📷${p.absent ? ' · לא מגיע/ה 😢' : ''}</small> <button class="btn sm ghost" style="padding:2px 8px" data-rm="${p.id}">✕</button></span>`).join('') || '<span style="color:var(--mut)">אין עדיין משתתפים</span>';
     $$('[data-rm]').forEach(b => confirmBtn(b, async () => {
       const id = b.dataset.rm;
       for (const ph of photos.filter(x => x.ownerId === id)) { await deleteDoc(dref('photos', ph.id)); await deleteDoc(dref('photoData', ph.id)); }
