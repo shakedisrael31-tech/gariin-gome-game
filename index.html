@@ -345,7 +345,7 @@ const firebaseConfig = {
 const db = getFirestore(initializeApp(firebaseConfig));
 
 // Pages caches the page for ~10 minutes: if a newer version is online, reload once to get it
-const BUILD = '2026-11-25-0755';
+const BUILD = '2026-11-25-0800';
 (async () => {
   try {
     const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
@@ -744,7 +744,7 @@ function upload() {
     const el = $('#slots'); processed = null;
     if (!me) { el.innerHTML = ''; return; }
     const absent = !!people.find(x => x.id === me)?.absent, max = absent ? 2 : 4, min = absent ? 2 : 3, n = myPhotos.length;
-    el.innerHTML = `<h2>התמונות שלך (${n}/${absent ? 2 : '3-4'})</h2>
+    el.innerHTML = `<h2>התמונות שלך: ${n} מתוך <bdi>${absent ? 2 : '3–4'}</bdi></h2>
       <div class="thumbs">${myPhotos.map(p => `<div class="thumb"><img data-pid="${p.id}" alt=""><div class="cap">${esc(p.caption || '')}</div><button class="x" data-del="${p.id}">🗑</button></div>`).join('')}</div>
       ${n >= min ? `<div class="done">✅ סיימת! ${absent ? 'נתגעגע אליך 💛' : 'נתראה במפגש 🎉'}</div>` : ''}
       ${n > max ? `<p class="msg" style="text-align:center">יש לך ${n} תמונות, ומספיקות ${max}. אפשר למחוק את המיותרות ב-🗑</p>` : ''}
