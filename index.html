@@ -169,6 +169,8 @@ button.chip{color:#fff;cursor:pointer;font-size:15px}
 .shoutbar button{border:0;border-radius:50%;width:38px;height:38px;flex:none;background:linear-gradient(180deg,#fff2b0,#ffcc33 45%,#e09a00);color:#4a1d00;font-size:18px;cursor:pointer}
 .shoutbar .sent{position:absolute;top:-26px;right:70px;font-size:13px;color:#ffe08a}
 body.playmode .screen{padding-bottom:110px}
+.recbox{display:flex;flex-direction:column;gap:8px;align-items:flex-start;background:#0004;border:1px dashed #ffd45c66;border-radius:14px;padding:10px}
+.recbox audio{width:100%}
 .ytbox{position:fixed;top:2.2vh;right:8.6vw;width:13vw;aspect-ratio:16/9;z-index:6;border:.25vw solid #e8b84a;border-radius:.7vw;overflow:hidden;box-shadow:0 .8vw 2vw #000a;background:#000}
 .ytbox[hidden]{display:none}
 .ytbox iframe{width:100%;height:100%;display:block;pointer-events:none}
@@ -345,7 +347,7 @@ const firebaseConfig = {
 const db = getFirestore(initializeApp(firebaseConfig));
 
 // Pages caches the page for ~10 minutes: if a newer version is online, reload once to get it
-const BUILD = '2026-11-25-0800';
+const BUILD = '2026-11-25-2305';
 (async () => {
   try {
     const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
@@ -751,28 +753,58 @@ function upload() {
       ${n < max ? `<div class="card">${n >= min ? '<label>רוצה להוסיף עוד אחת? (לא חובה)</label>' : ''}
         <label class="filebtn">📷 בחירת תמונה<input type="file" accept="image/*" id="file" hidden></label>
         <img id="prev" class="prev" hidden alt="">
-        <input id="cap" maxlength="100" placeholder="משפט קצר על התמונה (לא חובה, יופיע רק אחרי הניחוש)">
+        <input id="cap" maxlength="100" placeholder="${absent ? 'מה רואים בתמונה? (או הקלטה למטה)' : 'מה רואים בתמונה? (חובה, יופיע רק אחרי הניחוש)'}">
+        ${absent ? `<div class="recbox"><p class="sub" style="margin:0;font-size:14px">🎙️ כיוון שלא תגיע/י, אפשר במקום לכתוב להקליט הסבר קצר על התמונה (עד 30 שניות). הוא יושמע לכולם במסך הגדול!</p>
+          <button class="btn sm alt" id="rec" type="button">🎙️ להקליט הסבר</button><audio id="recPrev" controls hidden></audio></div>` : ''}
         <button class="btn" id="send" disabled>העלאה</button>
         <div id="msg" class="msg"></div></div>` : ''}
       <p class="sub" style="font-size:14px">אם רואים בתמונה את הפנים שלך, נטשטש אותן לפני המשחק.</p>`;
     $$('img[data-pid]', el).forEach(async im => { im.src = await getDisplay(im.dataset.pid); });
     $$('[data-del]', el).forEach(b => confirmBtn(b, async () => {
-      const id = b.dataset.del; await deleteDoc(dref('photos', id)); await deleteDoc(dref('photoData', id)); imgCache.delete(id);
+      const id = b.dataset.del; await deleteDoc(dref('photos', id)); await deleteDoc(dref('photoData', id)); await deleteDoc(dref('audio', id)); imgCache.delete(id);
     }));
     const file = $('#file'); if (!file) return;
+    let audioData = null;
+    const ready = () => { const ok = processed && ($('#cap').value.trim() || (absent && audioData)); $('#send').disabled = !ok; };
+    $('#cap').oninput = ready;
     file.onchange = async () => {
       const f = file.files[0]; if (!f) return;
       $('#msg').textContent = 'מכין את התמונה…';
-      try { processed = await fileToJpeg(f); $('#prev').src = processed; $('#prev').hidden = false; $('#send').disabled = false; $('#msg').textContent = ''; }
+      try { processed = await fileToJpeg(f); $('#prev').src = processed; $('#prev').hidden = false; $('#msg').textContent = $('#cap').value.trim() || audioData ? '' : (absent ? 'עכשיו לכתוב משפט או להקליט הסבר 👇' : 'עכשיו לכתוב משפט על התמונה 👇'); ready(); }
       catch (e) { $('#msg').textContent = 'לא הצלחתי לקרוא את התמונה. נסו תמונה אחרת (JPG/PNG).'; }
     };
+    if (absent) {
+      let rec = null, recTimer = null;
+      $('#rec').onclick = async () => {
+        if (rec && rec.state === 'recording') { rec.stop(); return; }
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const mime = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg'].find(m => window.MediaRecorder?.isTypeSupported?.(m)) || '';
+          rec = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 32000 } : { audioBitsPerSecond: 32000 });
+          const chunks = [];
+          rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+          rec.onstop = () => {
+            stream.getTracks().forEach(t => t.stop()); clearTimeout(recTimer);
+            const blob = new Blob(chunks, { type: rec.mimeType || mime || 'audio/webm' });
+            $('#rec').textContent = '🎙️ להקליט מחדש';
+            if (blob.size > 650000) { $('#msg').textContent = 'ההקלטה ארוכה מדי, נסו קצר יותר'; return; }
+            const fr = new FileReader(); fr.onload = () => { audioData = fr.result; $('#recPrev').src = audioData; $('#recPrev').hidden = false; $('#msg').textContent = 'ההקלטה מוכנה ✓'; ready(); }; fr.readAsDataURL(blob);
+          };
+          rec.start(); $('#rec').textContent = '⏹️ לעצור (מקליט…)'; $('#msg').textContent = '🔴 מקליט… עד 30 שניות';
+          recTimer = setTimeout(() => { if (rec.state === 'recording') rec.stop(); }, 30000);
+        } catch (e) { console.error(e); $('#msg').textContent = 'אין גישה למיקרופון. אפשר לכתוב משפט במקום'; }
+      };
+    }
     $('#send').onclick = async () => {
       if (!processed || myPhotos.length >= (people.find(x => x.id === me)?.absent ? 2 : 4)) return;
+      const cap = $('#cap').value.trim();
+      if (!cap && !(absent && audioData)) { $('#msg').textContent = absent ? 'צריך לכתוב משפט או להקליט הסבר 🙂' : 'צריך לכתוב משפט על התמונה 🙂'; return; }
       $('#send').disabled = true; $('#msg').textContent = 'מעלה…';
       try {
         const id = uid();
         await setDoc(dref('photoData', id), { orig: processed, display: processed });
-        await setDoc(dref('photos', id), { ownerId: me, caption: $('#cap').value.trim(), createdAt: Date.now(), blurred: false });
+        if (audioData) await setDoc(dref('audio', id), { data: audioData });
+        await setDoc(dref('photos', id), { ownerId: me, caption: cap, hasAudio: !!audioData, createdAt: Date.now(), blurred: false });
       } catch (e) { console.error(e); $('#msg').textContent = 'ההעלאה נכשלה, נסו שוב.'; $('#send').disabled = false; }
     };
   }
@@ -892,7 +924,8 @@ function play() {
 function host() {
   document.body.classList.add('hostmode'); addStage();
   let people = [], photos = [], players = [], state = null, answers = [], ansRound = -1, unsubAns = null;
-  let revealing = false, busy = false, lastKey = '';
+  let revealing = false, busy = false, lastKey = '', voiceEl = null;
+  unsubs.push(() => { try { voiceEl?.pause(); } catch (e) {} });
   const nameOf = id => people.find(p => p.id === id)?.name || '?';
 
   const softForce = () => !state || state.phase === 'lobby';
@@ -1084,11 +1117,19 @@ function host() {
               : `<div class="qhead"><div class="ctimer"><div class="wax" id="wax" style="--f:1"></div></div><div><div class="gold-text qt">של מי התמונה?</div><div class="secs" id="tleft"></div></div></div>`}
             <div class="h-opts">${(state.options || []).map((id, i) => `<div class="h-opt ${isRev ? (id === state.ownerId ? 'right' : 'wrong') : ''}" data-id="${id}" style="--c:${OPT_COLORS[i]};animation-delay:${i * 90}ms"><span class="chipc">${OPT_SHAPES[i]}</span>${av(id, 'av-h')}<span class="nm">${esc(nameOf(id))}</span><span class="vc"></span>${isRev && id === state.ownerId ? '<span class="ok">✔</span>' : ''}</div>`).join('')}</div>
             <div class="h-info" id="info"></div>
-            ${isRev ? '<div id="share"></div>' : ''}
+            ${isRev ? `<div id="share"></div>${photo.hasAudio ? `<button class="btn sm alt" id="voice" hidden style="font-size:1.4vw;padding:.6vw 1.4vw;align-self:flex-start">🔊 ההקלטה של ${esc(nameOf(state.ownerId))} · להשמיע שוב</button>` : ''}` : ''}
           </div></div>
         ${hostFig('side')}
         <div class="men-wrap sm">${menorahSVG(progress())}</div></div>`;
       getDisplay(state.photoId).then(src => { const im = $('#pimg'); if (im) im.src = src; });
+      try { voiceEl?.pause(); } catch (e) {}
+      if (isRev && photo.hasAudio) {
+        getDoc(dref('audio', state.photoId)).then(d => {
+          if (!d.exists() || state.phase !== 'reveal') return;
+          voiceEl = new Audio(d.data().data); voiceEl.play().catch(e => console.warn(e));
+          const v = $('#voice'); if (v) { v.hidden = false; v.onclick = () => { voiceEl.currentTime = 0; voiceEl.play(); }; }
+        });
+      }
       $('#nxt').onclick = next;
       confirmBtn($('#end'), endNow);
       return;
@@ -1232,7 +1273,7 @@ function admin() {
     $('#amsg').textContent = 'אופס ✓ (התמונות והמשתתפים נשארו)';
   });
   confirmBtn($('#wipe'), async () => {
-    $('#amsg').textContent = 'מוחק…'; await deleteAll('photos'); await deleteAll('photoData'); imgCache.clear(); $('#amsg').textContent = 'כל התמונות נמחקו ✓';
+    $('#amsg').textContent = 'מוחק…'; await deleteAll('photos'); await deleteAll('photoData'); await deleteAll('audio'); imgCache.clear(); $('#amsg').textContent = 'כל התמונות נמחקו ✓';
   });
   let recropping = false;
   watchPeople(async p => {
@@ -1257,7 +1298,7 @@ function admin() {
   function renderPhotos() {
     const nameOf = id => people.find(p => p.id === id)?.name || '?';
     $('#pgrid').innerHTML = `<div class="agrid">${photos.map(p => `<div class="aitem"><img data-pid="${p.id}" alt="">
-      <div class="meta"><b>${esc(nameOf(p.ownerId))}</b> ${p.blurred ? '<span class="badge">מטושטש ✓</span>' : ''}
+      <div class="meta"><b>${esc(nameOf(p.ownerId))}</b> ${p.blurred ? '<span class="badge">מטושטש ✓</span>' : ''}${p.hasAudio ? ' <span class="badge">🎙️ הקלטה</span>' : ''}
       <span style="color:var(--mut)">${esc(p.caption || '')}</span>
       <div class="btns"><button class="btn sm alt" data-blur="${p.id}">🫥 טשטוש</button>${p.blurred ? `<button class="btn sm ghost" data-orig="${p.id}">↩ מקור</button>` : ''}<button class="btn sm ghost" data-del="${p.id}">🗑</button></div></div></div>`).join('')}</div>` + (photos.length ? '' : '<span style="color:var(--mut)">עוד לא הועלו תמונות</span>');
     $$('#pgrid img[data-pid]').forEach(async im => { im.src = await getDisplay(im.dataset.pid); });
@@ -1266,7 +1307,7 @@ function admin() {
       const id = b.dataset.orig; const s = await getDoc(dref('photoData', id));
       await updateDoc(dref('photoData', id), { display: s.data().orig }); imgCache.delete(id); await updateDoc(dref('photos', id), { blurred: false });
     }));
-    $$('[data-del]').forEach(b => confirmBtn(b, async () => { const id = b.dataset.del; await deleteDoc(dref('photos', id)); await deleteDoc(dref('photoData', id)); imgCache.delete(id); }));
+    $$('[data-del]').forEach(b => confirmBtn(b, async () => { const id = b.dataset.del; await deleteDoc(dref('photos', id)); await deleteDoc(dref('photoData', id)); await deleteDoc(dref('audio', id)); imgCache.delete(id); }));
   }
 }
 
