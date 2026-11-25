@@ -347,7 +347,7 @@ const firebaseConfig = {
 const db = getFirestore(initializeApp(firebaseConfig));
 
 // Pages caches the page for ~10 minutes: if a newer version is online, reload once to get it
-const BUILD = '2026-11-25-2310';
+const BUILD = '2026-11-26-0020';
 (async () => {
   try {
     const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
@@ -754,7 +754,7 @@ function upload() {
         <label class="filebtn">📷 בחירת תמונה<input type="file" accept="image/*" id="file" hidden></label>
         <img id="prev" class="prev" hidden alt="">
         <input id="cap" maxlength="100" placeholder="${absent ? 'מה רואים בתמונה? (או הקלטה למטה)' : 'מה רואים בתמונה? (חובה, יופיע רק אחרי הניחוש)'}">
-        ${absent ? `<div class="recbox"><p class="sub" style="margin:0;font-size:14px">🎙️ כיוון שלא תגיע/י, אפשר במקום לכתוב להקליט הסבר קצר על התמונה (עד 30 שניות). הוא יושמע לכולם במסך הגדול!</p>
+        ${absent ? `<div class="recbox"><p class="sub" style="margin:0;font-size:14px">🎙️ נשמח להקלטה קצרה על התמונה (עד 30 שניות). היא תושמע לכולם במסך הגדול!</p>
           <button class="btn sm alt" id="rec" type="button">🎙️ להקליט הסבר</button><audio id="recPrev" controls hidden></audio></div>` : ''}
         <button class="btn" id="send" disabled>העלאה</button>
         <div id="msg" class="msg"></div></div>` : ''}
