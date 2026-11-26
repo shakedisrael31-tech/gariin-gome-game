@@ -347,7 +347,7 @@ const firebaseConfig = {
 const db = getFirestore(initializeApp(firebaseConfig));
 
 // Pages caches the page for ~10 minutes: if a newer version is online, reload once to get it
-const BUILD = '2026-11-26-upload-music-1';
+const BUILD = '2026-11-26-upload-autoplay-1';
 (async () => {
   try {
     const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
@@ -771,60 +771,43 @@ function home() {
 
 // Upload-page music is separate from the big-screen music and follows this page's lifetime.
 function setupUploadMusic() {
-  const audio = $('#uploadMusicAudio'), button = $('#uploadMusicToggle');
+  const audio = $('#uploadMusicAudio');
   const suspended = new Set();
-  let live = true, enabled = true, failed = false;
-  try { enabled = localStorage.getItem('pg_upload_music') !== 'off'; } catch (e) {}
+  let live = true, needsReload = false;
   audio.volume = 0.3;
-  const render = () => {
-    if (!live) return;
-    const playing = !audio.paused && !audio.ended;
-    button.disabled = suspended.size > 0;
-    button.textContent = suspended.size ? '⏸️ מוזיקה מושהית' : failed ? '🎵 לנסות שוב' : playing ? '🔊 השתקת מוזיקה' : '🎵 הפעלת מוזיקה';
-    button.setAttribute('aria-pressed', String(playing));
-    button.setAttribute('aria-label', suspended.size ? 'מוזיקת הרקע מושהית' : playing ? 'השתקת מוזיקת רקע' : 'הפעלת מוזיקת רקע');
-  };
   const play = () => {
-    if (!live || !enabled || suspended.size || !audio.paused) return;
+    if (!live || suspended.size || !audio.paused) return;
     try {
+      if (needsReload) { needsReload = false; audio.load(); }
       Promise.resolve(audio.play()).then(() => {
-        if (!live || !enabled || suspended.size) audio.pause();
-        render();
-      }).catch(() => render()); // Phones can require a tap before allowing sound.
-    } catch (e) { render(); }
+        if (!live || suspended.size) audio.pause();
+      }).catch(() => {}); // Retry on the next gesture if autoplay was blocked.
+    } catch (e) {}
   };
   const suspend = (reason, pause) => {
     if (!live) return;
     if (pause) suspended.add(reason); else suspended.delete(reason);
     if (suspended.size) audio.pause(); else play();
-    render();
   };
   const unlock = e => {
-    if (e.target?.closest?.('#uploadMusicToggle, #rec, audio') || e.ctrlKey || e.metaKey || e.altKey || e.key === 'Escape') return;
+    if (e.target?.closest?.('#rec, audio') || e.ctrlKey || e.metaKey || e.altKey || e.key === 'Escape') return;
     play();
   };
   const visibility = () => suspend('background', document.hidden);
-  const error = () => { failed = true; render(); };
-  button.onclick = () => {
-    if (suspended.size) return;
-    enabled = audio.paused;
-    try { localStorage.setItem('pg_upload_music', enabled ? 'on' : 'off'); } catch (e) {}
-    if (enabled) { if (failed) { failed = false; audio.load(); } play(); } else audio.pause();
-    render();
-  };
-  audio.addEventListener('playing', render);
-  audio.addEventListener('pause', render);
+  const error = () => { needsReload = true; };
+  // Touch browsers can grant sound permission on pointerup/click instead of pointerdown.
+  const gestures = ['pointerdown', 'pointerup', 'click', 'keydown'];
   audio.addEventListener('error', error);
-  document.addEventListener('pointerdown', unlock, true);
-  document.addEventListener('keydown', unlock, true);
+  gestures.forEach(type => document.addEventListener(type, unlock, true));
   document.addEventListener('visibilitychange', visibility);
   unsubs.push(() => {
     live = false; audio.pause();
-    audio.removeEventListener('playing', render); audio.removeEventListener('pause', render); audio.removeEventListener('error', error);
-    document.removeEventListener('pointerdown', unlock, true); document.removeEventListener('keydown', unlock, true); document.removeEventListener('visibilitychange', visibility);
-    button.onclick = null; audio.removeAttribute('src'); audio.load();
+    audio.removeEventListener('error', error);
+    gestures.forEach(type => document.removeEventListener(type, unlock, true));
+    document.removeEventListener('visibilitychange', visibility);
+    audio.removeAttribute('src'); audio.load();
   });
-  render(); visibility();
+  visibility();
   return { suspend };
 }
 
@@ -834,8 +817,7 @@ function upload() {
   app.innerHTML = `<div class="screen"><a class="back" href="#">←</a>
     <div class="phead">${marquee()}</div>
     <h1>📤 העלאת תמונות</h1>
-    <div style="display:flex;justify-content:center;margin:0 0 16px"><button class="btn sm ghost" type="button" id="uploadMusicToggle" aria-pressed="false">🎵 הפעלת מוזיקה</button></div>
-    <audio id="uploadMusicAudio" src="assets/upload-background-komu.mp3" loop preload="none"></audio>
+    <audio id="uploadMusicAudio" src="assets/upload-background-komu.mp3" autoplay loop preload="auto" hidden></audio>
     <p class="sub">3-4 תמונות של דברים שקורים לך בחיים עכשיו: משמעותיות, מרגשות, מצחיקות.<br><b style="color:#ffe08a">📸 עדיף תמונות שלא רואים בהן את הפרצוף שלך</b>, ככה יהיה יותר קשה לנחש.<br>אל תספרו לאף אחד מה שלחתם 🤫</p>
     <div id="who"></div>
     <div id="slots"></div></div>`;
