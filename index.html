@@ -347,7 +347,7 @@ const firebaseConfig = {
 const db = getFirestore(initializeApp(firebaseConfig));
 
 // Pages caches the page for ~10 minutes: if a newer version is online, reload once to get it
-const BUILD = '2026-11-26-0735';
+const BUILD = '2026-11-26-image-formats-1';
 (async () => {
   try {
     const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
@@ -554,15 +554,60 @@ function canvasToJpeg(c, limit = 400000) {
   return out;
 }
 function loadImg(src) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('img')); i.src = src; }); }
-async function fileToJpeg(file, max = 1280) {
-  const url = URL.createObjectURL(file);
+// Use native decoders first; load the HEIC/HEIF decoder only when needed.
+// heic-to 1.6.7 (LGPL-3.0): https://github.com/hoppergee/heic-to/tree/v1.6.7
+const IMAGE_ACCEPT = 'image/*,.jpg,.jpeg,.jfif,.png,.heic,.heif,.hif,.webp,.avif,.gif,.bmp';
+const IMAGE_READ_ERROR = 'לא הצלחתי לקרוא את התמונה. נסו לבחור אותה שוב או לבחור תמונה אחרת.';
+const imageError = message => Object.assign(new Error(message), { userMessage: message });
+const imageErrorText = error => error?.userMessage || IMAGE_READ_ERROR;
+let heicDecoderP = null;
+async function imageTimeout(promise, ms, message) {
+  let timer;
+  try { return await Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(imageError(message)), ms); })]); }
+  finally { clearTimeout(timer); }
+}
+async function getHeicDecoder() {
+  if (!heicDecoderP) {
+    heicDecoderP = imageTimeout(import('https://cdn.jsdelivr.net/npm/heic-to@1.6.7/dist/csp/heic-to.js'), 45000,
+      'טעינת ממיר התמונות נמשכת יותר מהרגיל. בדקו חיבור לאינטרנט ונסו שוב.')
+      .catch(() => { heicDecoderP = null; throw imageError('לא הצלחתי לטעון את ממיר התמונות. בדקו חיבור לאינטרנט ונסו שוב.'); });
+  }
+  return heicDecoderP;
+}
+async function isHeicFile(file) {
+  if (/\.(heic|heif|hif)$/i.test(file.name || '') || /^image\/hei[cf](?:-sequence)?$/i.test(file.type || '')) return true;
+  // Some Android file pickers provide neither an extension nor a useful MIME type.
+  const bytes = new Uint8Array(await file.slice(0, 64).arrayBuffer());
+  const brand = i => String.fromCharCode(...bytes.subarray(i, i + 4));
+  if (brand(4) !== 'ftyp') return false;
+  const brands = [brand(8)];
+  for (let i = 16; i + 4 <= bytes.length; i += 4) brands.push(brand(i));
+  if (brands.some(b => b === 'avif' || b === 'avis')) return false;
+  return brands.some(b => /^(heic|heix|hevc|hevx|heim|heis|hevm|hevs|mif1|msf1)$/.test(b));
+}
+async function imageFromBlob(blob) {
+  const url = URL.createObjectURL(blob);
+  try { return await loadImg(url); } finally { URL.revokeObjectURL(url); }
+}
+async function imageFromFile(file, onProgress = () => {}) {
+  if (!file?.size) throw imageError('הקובץ ריק. נסו לבחור את התמונה המקורית מהגלריה.');
+  try { return await imageFromBlob(file); } catch (e) { /* Try HEIC below if native decoding is unavailable. */ }
+  if (!await isHeicFile(file)) throw imageError(IMAGE_READ_ERROR);
+  onProgress('ממיר את התמונה… בפעם הראשונה זה עשוי לקחת כמה שניות');
+  const { heicTo } = await getHeicDecoder();
   try {
-    const img = await loadImg(url);
-    let w = img.naturalWidth, h = img.naturalHeight; const s = Math.min(1, max / Math.max(w, h));
-    w = Math.round(w * s); h = Math.round(h * s);
-    const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h);
-    return canvasToJpeg(c);
-  } finally { URL.revokeObjectURL(url); }
+    const jpeg = await imageTimeout(heicTo({ blob: file, type: 'image/jpeg', quality: 0.9 }), 60000,
+      'המרת התמונה נמשכת יותר מהרגיל. נסו שוב או בחרו תמונה אחרת.');
+    return await imageFromBlob(jpeg);
+  } catch (e) { throw e?.userMessage ? e : imageError(IMAGE_READ_ERROR); }
+}
+async function fileToJpeg(file, max = 1280, onProgress) {
+  const img = await imageFromFile(file, onProgress);
+  let w = img.naturalWidth, h = img.naturalHeight; const s = Math.min(1, max / Math.max(w, h));
+  w = Math.max(1, Math.round(w * s)); h = Math.max(1, Math.round(h * s));
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+  return canvasToJpeg(c);
 }
 
 // find the biggest face in an image (null if none / detector unavailable)
@@ -588,20 +633,18 @@ async function imgToAvatar(img) {
   const sx = Math.max(0, Math.min(W - side, cx - side / 2)), sy = Math.max(0, Math.min(H - side, cy - side / 2));
   const c = document.createElement('canvas'); c.width = c.height = 320;
   const x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
+  x.fillStyle = '#fff'; x.fillRect(0, 0, 320, 320);
   x.drawImage(img, sx, sy, side, side, 0, 0, 320, 320);
   return c.toDataURL('image/jpeg', 0.85);
 }
-async function fileToAvatar(file) {
-  const url = URL.createObjectURL(file);
-  try { return await imgToAvatar(await loadImg(url)); } finally { URL.revokeObjectURL(url); }
-}
+async function fileToAvatar(file, onProgress) { return imgToAvatar(await imageFromFile(file, onProgress)); }
 
 // self sign-up: name + profile photo (or pick yourself if already registered)
 function registerUI(el, people, onDone) {
-  let avatar = null;
+  let avatar = null, avatarRead = 0;
   el.innerHTML = `<div class="card">
     <label>מי את/ה? 👋</label>
-    <div class="regrow"><label class="avpick"><input type="file" accept="image/*" hidden><span class="avprev">📷<small>תמונת<br>פרופיל</small></span></label>
+    <div class="regrow"><label class="avpick"><input type="file" accept="${IMAGE_ACCEPT}" hidden><span class="avprev">📷<small>תמונת<br>פרופיל</small></span></label>
       <input class="rname" maxlength="24" placeholder="השם שלך"></div>
     <button class="btn big rgo">זה אני ✓</button><div class="msg rmsg"></div>
     ${people.length ? `<details><summary>כבר נרשמת? לחצו כאן ובחרו את עצמכם</summary><div class="plist">${people.map(p => `<button class="chip pick" data-id="${p.id}">${av(p)}${esc(p.name)}</button>`).join('')}</div></details>` : ''}
@@ -609,9 +652,15 @@ function registerUI(el, people, onDone) {
   const inp = $('input[type=file]', el), prev = $('.avprev', el), msg = $('.rmsg', el);
   inp.onchange = async () => {
     const f = inp.files[0]; if (!f) return;
-    msg.textContent = 'מזהה פנים…';
-    try { avatar = await fileToAvatar(f); prev.innerHTML = `<img src="${avatar}" alt="">`; msg.textContent = ''; }
-    catch (e) { msg.textContent = 'לא הצלחתי לקרוא את התמונה, נסו אחרת'; }
+    const read = ++avatarRead, go = $('.rgo', el);
+    avatar = null; go.disabled = true; prev.innerHTML = '📷<small>תמונת<br>פרופיל</small>'; msg.textContent = 'מכין תמונת פרופיל…';
+    const current = () => read === avatarRead && inp.isConnected;
+    try {
+      const result = await fileToAvatar(f, text => { if (current()) msg.textContent = text; });
+      if (!current()) return;
+      avatar = result; prev.innerHTML = `<img src="${avatar}" alt="">`; msg.textContent = '';
+    } catch (e) { if (current()) msg.textContent = imageErrorText(e); }
+    finally { if (current()) { go.disabled = false; inp.value = ''; } }
   };
   $('.rgo', el).onclick = async () => {
     const name = $('.rname', el).value.trim();
@@ -722,7 +771,7 @@ function home() {
 
 /* ================= upload ================= */
 function upload() {
-  let me = localStorage.getItem('pg_person') || '', people = [], myPhotos = [], unsubMine = null, processed = null, whoKey = '';
+  let me = localStorage.getItem('pg_person') || '', people = [], myPhotos = [], unsubMine = null, processed = null, whoKey = '', imageRead = 0;
   app.innerHTML = `<div class="screen"><a class="back" href="#">←</a>
     <div class="phead">${marquee()}</div>
     <h1>📤 העלאת תמונות</h1>
@@ -740,14 +789,27 @@ function upload() {
     if (key === whoKey) return; whoKey = key;
     if (!p) { registerUI(el, people, id => { me = id; whoKey = ''; renderWho(); watchMine(); }); return; }
     el.innerHTML = `<div class="card"><div class="row">${av(p, 'av-lg')}<div style="flex:1"><b style="font-size:20px">${esc(p.name)}</b><br>
-      <label class="lnk">החלפת תמונת פרופיל<input type="file" accept="image/*" hidden id="chAv"></label></div>
+      <label class="lnk">החלפת תמונת פרופיל<input type="file" accept="${IMAGE_ACCEPT}" hidden id="chAv"></label></div>
       <button class="btn sm ghost" id="notMe">זה לא אני</button></div>
       <label class="row" style="gap:10px;cursor:pointer;font-weight:600"><input type="checkbox" id="absent" ${p.absent ? 'checked' : ''} style="width:22px;height:22px;flex:none"> אני לא אגיע למפגש 😢</label>
-      ${p.absent ? '<p class="sub" style="margin:0;font-size:14px">חבל! אז מספיק 2 תמונות, התמונות יופיעו במשחק גם בלעדיך 💛</p>' : ''}</div>`;
+      ${p.absent ? '<p class="sub" style="margin:0;font-size:14px">חבל! אז מספיק 2 תמונות, התמונות יופיעו במשחק גם בלעדיך 💛</p>' : ''}<div class="msg" id="avMsg"></div></div>`;
     $('#absent').onchange = e => updateDoc(dref('people', me), { absent: e.target.checked });
     renderSlots();
     $('#notMe').onclick = () => { me = ''; localStorage.removeItem('pg_person'); whoKey = ''; renderWho(); watchMine(); };
-    $('#chAv').onchange = async e => { const f = e.target.files[0]; if (!f) return; await updateDoc(dref('people', me), { avatar: await fileToAvatar(f), fc: true }); };
+    let avatarRead = 0;
+    $('#chAv').onchange = async e => {
+      const input = e.target, f = input.files[0]; if (!f) return;
+      const read = ++avatarRead, person = me, msg = $('#avMsg');
+      const current = () => read === avatarRead && input.isConnected && person === me;
+      msg.textContent = 'מכין תמונת פרופיל…';
+      try {
+        const avatar = await fileToAvatar(f, text => { if (current()) msg.textContent = text; });
+        if (!current()) return;
+        await updateDoc(dref('people', person), { avatar, fc: true });
+        if (current()) msg.textContent = 'תמונת הפרופיל עודכנה ✓';
+      } catch (e) { if (current()) msg.textContent = imageErrorText(e); }
+      finally { if (current()) input.value = ''; }
+    };
   }
   function watchMine() {
     if (unsubMine) unsubMine();
@@ -760,7 +822,7 @@ function upload() {
   }
   unsubs.push(() => unsubMine && unsubMine());
   function renderSlots() {
-    const el = $('#slots'); processed = null;
+    const el = $('#slots'); processed = null; ++imageRead;
     if (!me) { el.innerHTML = ''; return; }
     const absent = !!people.find(x => x.id === me)?.absent, max = absent ? 2 : 4, min = absent ? 2 : 3, n = myPhotos.length;
     el.innerHTML = `<h2>התמונות שלך: ${n} מתוך <bdi>${absent ? 2 : '3–4'}</bdi></h2>
@@ -768,7 +830,8 @@ function upload() {
       ${n >= min ? `<div class="done">✅ סיימת! ${absent ? 'נתגעגע אליך 💛' : 'נתראה במפגש 🎉'}</div>` : ''}
       ${n > max ? `<p class="msg" style="text-align:center">יש לך ${n} תמונות, ומספיקות ${max}. אפשר למחוק את המיותרות ב-🗑</p>` : ''}
       ${n < max ? `<div class="card">${n >= min ? '<label>רוצה להוסיף עוד אחת? (לא חובה)</label>' : ''}
-        <label class="filebtn">📷 בחירת תמונה<input type="file" accept="image/*" id="file" hidden></label>
+        <label class="filebtn">📷 בחירת תמונה<input type="file" accept="${IMAGE_ACCEPT}" id="file" hidden></label>
+        <p class="sub" style="margin:0;font-size:13px">אפשר גם HEIC / HEIF מהטלפון, JPG, PNG, WebP, AVIF, GIF ו־BMP.</p>
         <img id="prev" class="prev" hidden alt="">
         <input id="cap" maxlength="100" placeholder="${absent ? 'מה רואים בתמונה? (או הקלטה למטה)' : 'מה רואים בתמונה? (חובה, יופיע רק אחרי הניחוש)'}">
         ${absent ? `<div class="recbox"><p class="sub" style="margin:0;font-size:14px">🎙️ נשמח להקלטה קצרה על התמונה (עד 30 שניות). היא תושמע לכולם במסך הגדול!</p>
@@ -786,9 +849,17 @@ function upload() {
     $('#cap').oninput = ready;
     file.onchange = async () => {
       const f = file.files[0]; if (!f) return;
-      $('#msg').textContent = 'מכין את התמונה…';
-      try { processed = await fileToJpeg(f); $('#prev').src = processed; $('#prev').hidden = false; $('#msg').textContent = $('#cap').value.trim() || audioData ? '' : (absent ? 'עכשיו לכתוב משפט או להקליט הסבר 👇' : 'עכשיו לכתוב משפט על התמונה 👇'); ready(); }
-      catch (e) { $('#msg').textContent = 'לא הצלחתי לקרוא את התמונה. נסו תמונה אחרת (JPG/PNG).'; }
+      const read = ++imageRead, msg = $('#msg'), prev = $('#prev');
+      const current = () => read === imageRead && file.isConnected;
+      processed = null; prev.hidden = true; prev.removeAttribute('src'); ready();
+      msg.textContent = 'מכין את התמונה…';
+      try {
+        const result = await fileToJpeg(f, 1280, text => { if (current()) msg.textContent = text; });
+        if (!current()) return;
+        processed = result; prev.src = processed; prev.hidden = false;
+        msg.textContent = $('#cap').value.trim() || audioData ? '' : (absent ? 'עכשיו לכתוב משפט או להקליט הסבר 👇' : 'עכשיו לכתוב משפט על התמונה 👇'); ready();
+      } catch (e) { if (current()) { msg.textContent = imageErrorText(e); ready(); } }
+      finally { if (current()) file.value = ''; }
     };
     if (absent) {
       let rec = null, recTimer = null;
@@ -1430,3 +1501,4 @@ route();
 </script>
 </body>
 </html>
+
