@@ -347,7 +347,7 @@ const firebaseConfig = {
 const db = getFirestore(initializeApp(firebaseConfig));
 
 // Pages caches the page for ~10 minutes: if a newer version is online, reload once to get it
-const BUILD = '2026-11-26-image-formats-1';
+const BUILD = '2026-11-26-upload-music-1';
 (async () => {
   try {
     const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
@@ -769,15 +769,77 @@ function home() {
   </div>`;
 }
 
+// Upload-page music is separate from the big-screen music and follows this page's lifetime.
+function setupUploadMusic() {
+  const audio = $('#uploadMusicAudio'), button = $('#uploadMusicToggle');
+  const suspended = new Set();
+  let live = true, enabled = true, failed = false;
+  try { enabled = localStorage.getItem('pg_upload_music') !== 'off'; } catch (e) {}
+  audio.volume = 0.3;
+  const render = () => {
+    if (!live) return;
+    const playing = !audio.paused && !audio.ended;
+    button.disabled = suspended.size > 0;
+    button.textContent = suspended.size ? '⏸️ מוזיקה מושהית' : failed ? '🎵 לנסות שוב' : playing ? '🔊 השתקת מוזיקה' : '🎵 הפעלת מוזיקה';
+    button.setAttribute('aria-pressed', String(playing));
+    button.setAttribute('aria-label', suspended.size ? 'מוזיקת הרקע מושהית' : playing ? 'השתקת מוזיקת רקע' : 'הפעלת מוזיקת רקע');
+  };
+  const play = () => {
+    if (!live || !enabled || suspended.size || !audio.paused) return;
+    try {
+      Promise.resolve(audio.play()).then(() => {
+        if (!live || !enabled || suspended.size) audio.pause();
+        render();
+      }).catch(() => render()); // Phones can require a tap before allowing sound.
+    } catch (e) { render(); }
+  };
+  const suspend = (reason, pause) => {
+    if (!live) return;
+    if (pause) suspended.add(reason); else suspended.delete(reason);
+    if (suspended.size) audio.pause(); else play();
+    render();
+  };
+  const unlock = e => {
+    if (e.target?.closest?.('#uploadMusicToggle, #rec, audio') || e.ctrlKey || e.metaKey || e.altKey || e.key === 'Escape') return;
+    play();
+  };
+  const visibility = () => suspend('background', document.hidden);
+  const error = () => { failed = true; render(); };
+  button.onclick = () => {
+    if (suspended.size) return;
+    enabled = audio.paused;
+    try { localStorage.setItem('pg_upload_music', enabled ? 'on' : 'off'); } catch (e) {}
+    if (enabled) { if (failed) { failed = false; audio.load(); } play(); } else audio.pause();
+    render();
+  };
+  audio.addEventListener('playing', render);
+  audio.addEventListener('pause', render);
+  audio.addEventListener('error', error);
+  document.addEventListener('pointerdown', unlock, true);
+  document.addEventListener('keydown', unlock, true);
+  document.addEventListener('visibilitychange', visibility);
+  unsubs.push(() => {
+    live = false; audio.pause();
+    audio.removeEventListener('playing', render); audio.removeEventListener('pause', render); audio.removeEventListener('error', error);
+    document.removeEventListener('pointerdown', unlock, true); document.removeEventListener('keydown', unlock, true); document.removeEventListener('visibilitychange', visibility);
+    button.onclick = null; audio.removeAttribute('src'); audio.load();
+  });
+  render(); visibility();
+  return { suspend };
+}
+
 /* ================= upload ================= */
 function upload() {
   let me = localStorage.getItem('pg_person') || '', people = [], myPhotos = [], unsubMine = null, processed = null, whoKey = '', imageRead = 0;
   app.innerHTML = `<div class="screen"><a class="back" href="#">←</a>
     <div class="phead">${marquee()}</div>
     <h1>📤 העלאת תמונות</h1>
+    <div style="display:flex;justify-content:center;margin:0 0 16px"><button class="btn sm ghost" type="button" id="uploadMusicToggle" aria-pressed="false">🎵 הפעלת מוזיקה</button></div>
+    <audio id="uploadMusicAudio" src="assets/upload-background-komu.mp3" loop preload="none"></audio>
     <p class="sub">3-4 תמונות של דברים שקורים לך בחיים עכשיו: משמעותיות, מרגשות, מצחיקות.<br><b style="color:#ffe08a">📸 עדיף תמונות שלא רואים בהן את הפרצוף שלך</b>, ככה יהיה יותר קשה לנחש.<br>אל תספרו לאף אחד מה שלחתם 🤫</p>
     <div id="who"></div>
     <div id="slots"></div></div>`;
+  const uploadMusic = setupUploadMusic();
   watchPeople(p => {
     people = p;
     if (me && !p.find(x => x.id === me)) { me = ''; watchMine(); }
@@ -822,6 +884,7 @@ function upload() {
   }
   unsubs.push(() => unsubMine && unsubMine());
   function renderSlots() {
+    uploadMusic.suspend('preview', false);
     const el = $('#slots'); processed = null; ++imageRead;
     if (!me) { el.innerHTML = ''; return; }
     const absent = !!people.find(x => x.id === me)?.absent, max = absent ? 2 : 4, min = absent ? 2 : 3, n = myPhotos.length;
@@ -863,8 +926,12 @@ function upload() {
     };
     if (absent) {
       let rec = null, recTimer = null;
+      $('#recPrev').onplay = () => uploadMusic.suspend('preview', true);
+      $('#recPrev').onpause = $('#recPrev').onended = () => uploadMusic.suspend('preview', false);
       $('#rec').onclick = async () => {
         if (rec && rec.state === 'recording') { rec.stop(); return; }
+        uploadMusic.suspend('recording', true);
+        $('#recPrev').pause();
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           const mime = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg'].find(m => window.MediaRecorder?.isTypeSupported?.(m)) || '';
@@ -873,6 +940,7 @@ function upload() {
           rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
           rec.onstop = () => {
             stream.getTracks().forEach(t => t.stop()); clearTimeout(recTimer);
+            uploadMusic.suspend('recording', false);
             const blob = new Blob(chunks, { type: rec.mimeType || mime || 'audio/webm' });
             $('#rec').textContent = '🎙️ להקליט מחדש';
             if (blob.size > 650000) { $('#msg').textContent = 'ההקלטה ארוכה מדי, נסו קצר יותר'; return; }
@@ -880,7 +948,7 @@ function upload() {
           };
           rec.start(1000); $('#rec').textContent = '⏹️ לעצור (מקליט…)'; $('#msg').textContent = '🔴 מקליט… עד 30 שניות';
           recTimer = setTimeout(() => { if (rec.state === 'recording') rec.stop(); }, 30000);
-        } catch (e) { console.error(e); $('#msg').textContent = 'אין גישה למיקרופון. אפשר לכתוב משפט במקום'; }
+        } catch (e) { uploadMusic.suspend('recording', false); console.error(e); $('#msg').textContent = 'אין גישה למיקרופון. אפשר לכתוב משפט במקום'; }
       };
     }
     $('#send').onclick = async () => {
