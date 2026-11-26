@@ -347,7 +347,7 @@ const firebaseConfig = {
 const db = getFirestore(initializeApp(firebaseConfig));
 
 // Pages caches the page for ~10 minutes: if a newer version is online, reload once to get it
-const BUILD = '2026-11-26-0030';
+const BUILD = '2026-11-26-0730';
 (async () => {
   try {
     const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
@@ -726,7 +726,7 @@ function upload() {
       <label class="lnk">החלפת תמונת פרופיל<input type="file" accept="image/*" hidden id="chAv"></label></div>
       <button class="btn sm ghost" id="notMe">זה לא אני</button></div>
       <label class="row" style="gap:10px;cursor:pointer;font-weight:600"><input type="checkbox" id="absent" ${p.absent ? 'checked' : ''} style="width:22px;height:22px;flex:none"> אני לא אגיע למפגש 😢</label>
-      ${p.absent ? '<p class="sub" style="margin:0;font-size:14px">חבל! אז מספיק 2 תמונות, והן ישתתפו במשחק גם בלעדיך 💛</p>' : ''}</div>`;
+      ${p.absent ? '<p class="sub" style="margin:0;font-size:14px">חבל! אז מספיק 2 תמונות, התמונות יופיעו במשחק גם בלעדיך 💛</p>' : ''}</div>`;
     $('#absent').onchange = e => updateDoc(dref('people', me), { absent: e.target.checked });
     renderSlots();
     $('#notMe').onclick = () => { me = ''; localStorage.removeItem('pg_person'); whoKey = ''; renderWho(); watchMine(); };
