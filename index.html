@@ -347,7 +347,7 @@ const firebaseConfig = {
 const db = getFirestore(initializeApp(firebaseConfig));
 
 // Pages caches the page for ~10 minutes: if a newer version is online, reload once to get it
-const BUILD = '2026-11-26-0730';
+const BUILD = '2026-11-26-0735';
 (async () => {
   try {
     const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
@@ -683,10 +683,27 @@ async function syncMusic(phase) {
   }
 }
 
+/* ---------- admin password ---------- */
+const ADMIN_HASH = 'ae2caa1f3061a475ffd5285232ffc9294368daa2a9c45628b80a727da4a772af'; // sha-256 of the admin password
+async function sha256(t) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+function adminLogin() {
+  app.innerHTML = `<div class="screen center"><div class="phead">${marquee()}</div><h1>🔒 ניהול</h1>
+    <div class="card" style="width:100%;max-width:340px"><label>סיסמה</label>
+      <input id="apw" type="password" inputmode="numeric" autocomplete="off" placeholder="••••••">
+      <button class="btn big" id="ago">כניסה</button><div class="msg" id="amsg2"></div></div>
+    <a class="small-links" href="#">← חזרה</a></div>`;
+  const go = async () => {
+    if (await sha256($('#apw').value.trim()) === ADMIN_HASH) { localStorage.setItem('pg_admin', ADMIN_HASH); route(); }
+    else { $('#amsg2').textContent = 'סיסמה שגויה'; $('#apw').value = ''; }
+  };
+  $('#ago').onclick = go; $('#apw').onkeydown = e => { if (e.key === 'Enter') go(); }; $('#apw').focus();
+}
+
 /* ================= router ================= */
 function route() {
   cleanup();
   const r = location.hash.replace('#', '') || 'home';
+  if (r === 'admin' && localStorage.getItem('pg_admin') !== ADMIN_HASH) return adminLogin();
   ({ home, upload, play, host, admin }[r] || home)();
 }
 window.addEventListener('hashchange', route);
